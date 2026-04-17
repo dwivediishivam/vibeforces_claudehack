@@ -18,7 +18,9 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   title: "VibeForces",
   description: "LeetCode for Vibecoders",
-  metadataBase: new URL("https://vibeforces.vercel.app"),
+  metadataBase: new URL(
+    process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000",
+  ),
 };
 
 export const viewport: Viewport = {
