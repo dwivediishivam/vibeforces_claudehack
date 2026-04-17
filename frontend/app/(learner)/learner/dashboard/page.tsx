@@ -1,11 +1,118 @@
-import { mockContestBanner, mockDashboard } from "@/lib/data/mock";
-import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { challengeSummaryCards, categoryLabels, mockContestBanner, mockDashboard } from "@/lib/data/mock";
 import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StatCard } from "@/components/common/stat-card";
 import { CountdownTimer } from "@/components/common/countdown-timer";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+
+type SubmissionRow = {
+  id: string;
+  combined_score?: number | null;
+  challenge_id: string;
+  created_at?: string;
+  challenges?: {
+    title: string;
+    category: keyof typeof categoryLabels;
+  };
+};
 
 export default function LearnerDashboardPage() {
+  const auth = useAuth();
+  const [contestBanner, setContestBanner] = useState(mockContestBanner);
+  const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
+  const [rank, setRank] = useState<number>(mockDashboard.rank);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getContests()
+      .then((response) => {
+        if (!cancelled && response.contests[0]) {
+          setContestBanner({
+            title: response.contests[0].title,
+            scheduled_at: response.contests[0].scheduled_at,
+            duration_minutes: response.contests[0].duration_minutes,
+          });
+        }
+      })
+      .catch(() => {});
+
+    if (auth.session?.access_token) {
+      apiClient
+        .getMySubmissions(auth.session.access_token)
+        .then((response) => {
+          if (!cancelled) {
+            setSubmissions((response.submissions ?? []) as SubmissionRow[]);
+          }
+        })
+        .catch(() => {});
+    }
+
+    apiClient
+      .getPracticeLeaderboard()
+      .then((response) => {
+        if (cancelled) return;
+        const currentUserEntry = response.leaderboard.find(
+          (entry) => entry.user_id === auth.session?.user.id,
+        );
+        if (currentUserEntry) {
+          setRank(currentUserEntry.rank);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.session?.access_token, auth.session?.user.id]);
+
+  const derived = useMemo(() => {
+    const totalScore = submissions.reduce(
+      (sum, submission) => sum + Number(submission.combined_score ?? 0),
+      0,
+    );
+    const solvedSet = new Set(submissions.map((submission) => submission.challenge_id));
+    const categoryProgress = {
+      spec_to_prompt: 0,
+      token_golf: 0,
+      bug_fix: 0,
+      architecture_pick: 0,
+      ui_reproduction: 0,
+    } as Record<keyof typeof categoryLabels, number>;
+
+    for (const submission of submissions) {
+      const category = submission.challenges?.category;
+      if (category && category in categoryProgress) {
+        categoryProgress[category] += 1;
+      }
+    }
+
+    return {
+      totalScore: totalScore || mockDashboard.totalScore,
+      solved: solvedSet.size || mockDashboard.solved,
+      rank,
+      recentSubmissions:
+        submissions.slice(0, 3).map((submission) => ({
+          id: submission.id,
+          title: submission.challenges?.title ?? "Challenge",
+          category: submission.challenges?.category ?? "spec_to_prompt",
+          score: Number(submission.combined_score ?? 0),
+          timeAgo: submission.created_at
+            ? new Date(submission.created_at).toLocaleString("en-IN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+              })
+            : "Recently",
+        })) || mockDashboard.recentSubmissions,
+      categoryProgress,
+    };
+  }, [rank, submissions]);
+
   return (
     <div className="space-y-8">
       <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
@@ -14,7 +121,7 @@ export default function LearnerDashboardPage() {
             Dashboard
           </div>
           <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
-            Welcome back, Jane
+            Welcome back, {auth.displayName}
           </h1>
           <p className="mt-2 text-sm text-[#94a3b8]">Your vibe coding journey</p>
         </div>
@@ -23,19 +130,19 @@ export default function LearnerDashboardPage() {
             Contest Banner
           </div>
           <div className="mt-3 font-mono-ui text-lg text-[#f1f5f9]">
-            {mockContestBanner.title}
+            {contestBanner.title}
           </div>
           <CountdownTimer
-            targetDate={mockContestBanner.scheduled_at}
+            targetDate={contestBanner.scheduled_at}
             className="mt-2 text-2xl font-mono-ui text-[#a78bfa]"
           />
         </Card>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Score" value={mockDashboard.totalScore.toLocaleString()} change={mockDashboard.scoreChange} />
-        <StatCard label="Solved" value={`${mockDashboard.solved}/30`} change={mockDashboard.solvedChange} accent="green" />
-        <StatCard label="Rank" value={`#${mockDashboard.rank}`} change={mockDashboard.rankChange} accent="amber" />
+        <StatCard label="Score" value={derived.totalScore.toLocaleString()} change={mockDashboard.scoreChange} />
+        <StatCard label="Solved" value={`${derived.solved}/30`} change={mockDashboard.solvedChange} accent="green" />
+        <StatCard label="Rank" value={`#${derived.rank}`} change={mockDashboard.rankChange} accent="amber" />
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
@@ -44,7 +151,7 @@ export default function LearnerDashboardPage() {
             Recent Submissions
           </div>
           <div className="mt-4 space-y-3">
-            {mockDashboard.recentSubmissions.map((submission) => (
+            {derived.recentSubmissions.map((submission) => (
               <div
                 key={submission.id}
                 className="flex items-center justify-between rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-4"
@@ -68,7 +175,7 @@ export default function LearnerDashboardPage() {
             Category Progress
           </div>
           <div className="mt-4 space-y-5">
-            {Object.entries(mockDashboard.categoryProgress).map(([category, solved]) => (
+            {Object.entries(derived.categoryProgress).map(([category, solved]) => (
               <div key={category}>
                 <div className="mb-2 flex items-center justify-between text-sm text-[#cbd5e1]">
                   <span>{categoryLabels[category as keyof typeof categoryLabels]}</span>

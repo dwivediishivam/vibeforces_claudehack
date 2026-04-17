@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
 import { Button } from "@/components/ui/button";
@@ -9,23 +9,52 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DifficultyBadge } from "@/components/common/difficulty-badge";
 import { ProctoringBanner } from "@/components/common/proctoring-banner";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CreateTestPage() {
+  const auth = useAuth();
+  const [catalog, setCatalog] = useState(challengeSummaryCards);
   const [title, setTitle] = useState("Frontend Developer Assessment");
+  const [description, setDescription] = useState(
+    "A balanced screening set focused on prompt quality, debugging, and UI instincts.",
+  );
   const [timeLimit, setTimeLimit] = useState("60");
   const [category, setCategory] = useState("all");
   const [difficulty, setDifficulty] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [createdLink, setCreatedLink] = useState("");
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getChallenges()
+      .then((response) => {
+        if (!cancelled) {
+          setCatalog(response.challenges);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCatalog(challengeSummaryCards);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const available = useMemo(
     () =>
-      challengeSummaryCards.filter(
+      catalog.filter(
         (challenge) =>
           (category === "all" || challenge.category === category) &&
           (difficulty === "all" || challenge.difficulty === difficulty),
       ),
-    [category, difficulty],
+    [catalog, category, difficulty],
   );
 
   return (
@@ -41,11 +70,19 @@ export default function CreateTestPage() {
 
       <Card className="surface-card rounded-2xl p-6">
         <div className="grid gap-4 md:grid-cols-[1fr_200px]">
-          <Input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="h-12 border-[#1e293b] bg-[#0a0f1e]"
-          />
+          <div className="space-y-4">
+            <Input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              className="h-12 border-[#1e293b] bg-[#0a0f1e]"
+            />
+            <Input
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              className="h-12 border-[#1e293b] bg-[#0a0f1e]"
+              placeholder="Short description"
+            />
+          </div>
           <Select value={timeLimit} onValueChange={(value) => value && setTimeLimit(value)}>
             <SelectTrigger className="h-12 border-[#1e293b] bg-[#0a0f1e] font-mono-ui">
               <SelectValue />
@@ -132,7 +169,7 @@ export default function CreateTestPage() {
                 </div>
               ) : (
                 selectedIds.map((id) => {
-                  const challenge = challengeSummaryCards.find((item) => item.id === id)!;
+                  const challenge = catalog.find((item) => item.id === id)!;
                   return (
                     <div
                       key={id}
@@ -164,18 +201,53 @@ export default function CreateTestPage() {
 
         <div className="mt-6 flex flex-wrap items-center gap-3">
           <Button
+            disabled={creating}
             className="bg-[#7c3aed] hover:bg-[#6d28d9]"
-            onClick={() => {
+            onClick={async () => {
               if (selectedIds.length === 0) {
                 toast.error("Select at least one challenge.");
                 return;
               }
-              const shareCode = "vf-custom-preview";
-              setCreatedLink(`${window.location.origin}/test/${shareCode}`);
-              toast.success("Preview link generated.");
+
+              const token = auth.session?.access_token;
+              if (!token) {
+                toast.error("Sign in as a recruiter to create a live test.");
+                return;
+              }
+
+              setCreating(true);
+              try {
+                const response = (await apiClient.createTest(
+                  {
+                    title,
+                    description,
+                    challenge_ids: selectedIds,
+                    time_limit_minutes: Number(timeLimit),
+                    proctoring_enabled: false,
+                  },
+                  token,
+                )) as {
+                  test: {
+                    share_code: string;
+                  };
+                };
+
+                const appUrl =
+                  process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+                setCreatedLink(`${appUrl.replace(/\/$/, "")}/test/${response.test.share_code}`);
+                toast.success("Recruiter test created.");
+              } catch (error) {
+                toast.error(
+                  error instanceof Error
+                    ? error.message
+                    : "Unable to create the recruiter test.",
+                );
+              } finally {
+                setCreating(false);
+              }
             }}
           >
-            Create Test &amp; Get Link
+            {creating ? "Creating..." : "Create Test & Get Link"}
           </Button>
           {createdLink ? (
             <div className="text-sm text-[#94a3b8]">{createdLink}</div>

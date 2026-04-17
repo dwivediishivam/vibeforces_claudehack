@@ -1,28 +1,63 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { challengeLibrary } from "@/lib/data/mock";
-import { launchContest } from "@shared/seed-data";
 import { ChallengeWorkbench } from "@/components/challenges/challenge-workbench";
 import { CountdownTimer } from "@/components/common/countdown-timer";
 import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
-import { mockLeaderboard } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
+import { challengeLibrary, mockLeaderboard } from "@/lib/data/mock";
+import type { ChallengeRecord, ContestRecord } from "@shared/types";
+import { launchContest } from "@shared/seed-data";
 
 export default function ContestArenaPage() {
   const params = useParams<{ id: string }>();
-  const contest = params.id === launchContest.id ? launchContest : launchContest;
-  const challenges = useMemo(
-    () =>
-      challengeLibrary.filter((challenge) =>
-        contest.challenge_ids.includes(challenge.id),
-      ),
-    [contest.challenge_ids],
-  );
+  const [contest, setContest] = useState<ContestRecord | null>(null);
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>([]);
+  const [leaderboard, setLeaderboard] = useState(mockLeaderboard.slice(0, 5));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([
+      apiClient.getContest(params.id),
+      apiClient.getContestLeaderboard(params.id),
+    ])
+      .then(([contestResponse, leaderboardResponse]) => {
+        if (cancelled) return;
+        setContest(contestResponse.contest);
+        setChallenges(contestResponse.challenges);
+        setLeaderboard(leaderboardResponse.leaderboard);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setContest(launchContest);
+        setChallenges(
+          challengeLibrary.filter((challenge) =>
+            launchContest.challenge_ids.includes(challenge.id),
+          ),
+        );
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
+
   const [activeChallengeId, setActiveChallengeId] = useState(challenges[0]?.id);
   const activeChallenge =
     challenges.find((challenge) => challenge.id === activeChallengeId) ??
     challenges[0];
+
+  useEffect(() => {
+    if (challenges.length > 0 && !activeChallengeId) {
+      setActiveChallengeId(challenges[0].id);
+    }
+  }, [activeChallengeId, challenges]);
+
+  if (!contest) {
+    return null;
+  }
 
   return (
     <div className="space-y-6">
@@ -80,7 +115,7 @@ export default function ContestArenaPage() {
           <div className="surface-card rounded-2xl p-4">
             <div className="text-sm font-mono-ui text-[#f1f5f9]">Live Leaderboard</div>
           </div>
-          <LeaderboardTable entries={mockLeaderboard.slice(0, 5)} />
+          <LeaderboardTable entries={leaderboard} />
         </div>
       </div>
     </div>

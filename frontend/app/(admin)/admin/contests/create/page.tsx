@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
 import { Button } from "@/components/ui/button";
@@ -8,20 +8,45 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DifficultyBadge } from "@/components/common/difficulty-badge";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function CreateContestPage() {
+  const auth = useAuth();
+  const [catalog, setCatalog] = useState(challengeSummaryCards);
   const [title, setTitle] = useState("VibeForces Launch Challenge");
+  const [description, setDescription] = useState(
+    "The very first VibeForces contest. Test your vibe coding instincts across all five categories.",
+  );
   const [scheduledAt, setScheduledAt] = useState("2026-04-18T20:00");
   const [duration, setDuration] = useState("120");
   const [category, setCategory] = useState("all");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
+  const [creating, setCreating] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getChallenges()
+      .then((response) => {
+        if (!cancelled) {
+          setCatalog(response.challenges);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const available = useMemo(
     () =>
-      challengeSummaryCards.filter(
+      catalog.filter(
         (challenge) => category === "all" || challenge.category === category,
       ),
-    [category],
+    [catalog, category],
   );
 
   return (
@@ -36,11 +61,19 @@ export default function CreateContestPage() {
       </div>
       <Card className="surface-card rounded-2xl p-6">
         <div className="grid gap-4 xl:grid-cols-[1fr_220px_220px]">
-          <Input
-            value={title}
-            onChange={(event) => setTitle(event.target.value)}
-            className="h-12 border-[#1e293b] bg-[#0a0f1e]"
-          />
+          <div className="space-y-4">
+            <Input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              className="h-12 border-[#1e293b] bg-[#0a0f1e]"
+            />
+            <Input
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              className="h-12 border-[#1e293b] bg-[#0a0f1e]"
+              placeholder="Contest description"
+            />
+          </div>
           <Input
             type="datetime-local"
             value={scheduledAt}
@@ -108,7 +141,7 @@ export default function CreateContestPage() {
             </div>
             <div className="mt-3 space-y-2">
               {selectedIds.map((id) => {
-                const challenge = challengeSummaryCards.find((item) => item.id === id)!;
+                const challenge = catalog.find((item) => item.id === id)!;
                 return (
                   <div
                     key={id}
@@ -126,10 +159,45 @@ export default function CreateContestPage() {
         </div>
         <div className="mt-6">
           <Button
+            disabled={creating}
             className="bg-[#7c3aed] hover:bg-[#6d28d9]"
-            onClick={() => toast.success("Contest draft created.")}
+            onClick={async () => {
+              const token = auth.session?.access_token;
+
+              if (!token) {
+                toast.error("Sign in as an admin to create contests.");
+                return;
+              }
+
+              if (selectedIds.length === 0) {
+                toast.error("Select at least one challenge.");
+                return;
+              }
+
+              setCreating(true);
+              try {
+                await apiClient.createContest(
+                  {
+                    title,
+                    description,
+                    scheduled_at: new Date(scheduledAt).toISOString(),
+                    duration_minutes: Number(duration),
+                    challenge_ids: selectedIds,
+                    is_public: true,
+                  },
+                  token,
+                );
+                toast.success("Contest created.");
+              } catch (error) {
+                toast.error(
+                  error instanceof Error ? error.message : "Contest creation failed.",
+                );
+              } finally {
+                setCreating(false);
+              }
+            }}
           >
-            Create Contest
+            {creating ? "Creating..." : "Create Contest"}
           </Button>
         </div>
       </Card>

@@ -1,15 +1,43 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Card } from "@/components/ui/card";
 import { CountdownTimer } from "@/components/common/countdown-timer";
 import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
 import { mockLeaderboard } from "@/lib/data/mock";
 import { launchContest } from "@shared/seed-data";
+import { apiClient } from "@/lib/api";
+import type { ContestRecord } from "@shared/types";
 
 export default function AdminContestDetailPage() {
   const params = useParams<{ id: string }>();
-  const contest = params.id === launchContest.id ? launchContest : launchContest;
+  const [contest, setContest] = useState<ContestRecord>(launchContest);
+  const [leaderboard, setLeaderboard] = useState(mockLeaderboard.slice(0, 10));
+
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all([
+      apiClient.getContest(params.id),
+      apiClient.getContestLeaderboard(params.id),
+    ])
+      .then(([contestResponse, leaderboardResponse]) => {
+        if (cancelled) return;
+        setContest(contestResponse.contest);
+        setLeaderboard(leaderboardResponse.leaderboard);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setContest(launchContest);
+          setLeaderboard(mockLeaderboard.slice(0, 10));
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [params.id]);
 
   return (
     <div className="space-y-6">
@@ -48,7 +76,7 @@ export default function AdminContestDetailPage() {
         </div>
       </Card>
 
-      <LeaderboardTable entries={mockLeaderboard.slice(0, 10)} />
+      <LeaderboardTable entries={leaderboard} />
     </div>
   );
 }

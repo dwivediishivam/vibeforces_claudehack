@@ -1,9 +1,10 @@
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
-import { mockLeaderboard } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
 
-export default function LeaderboardPage() {
-  const entries = mockLeaderboard.map((entry) => ({
+export default async function LeaderboardPage() {
+  const { leaderboard } = await apiClient.getPracticeLeaderboard();
+  const entries = leaderboard.map((entry) => ({
     ...entry,
     isCurrentUser: entry.rank === 7,
   }));

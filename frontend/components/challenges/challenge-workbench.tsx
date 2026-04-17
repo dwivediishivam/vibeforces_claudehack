@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import type { ChallengeRecord } from "@shared/types";
 import { ArrowLeft } from "lucide-react";
@@ -31,35 +31,6 @@ type SubmissionView = {
   aiResponses: string[];
 };
 
-function buildDemoSubmission(challenge: ChallengeRecord, promptCount: number): SubmissionView {
-  const data = challenge.challenge_data as any;
-  const accuracy = challenge.category === "architecture_pick" ? 9.2 : 8.4;
-  const tokenScore = challenge.category === "token_golf" ? 92 : 86;
-  const aiResponses =
-    challenge.category === "token_golf"
-      ? [String(data.target_output ?? "Generated output")]
-      : challenge.category === "ui_reproduction"
-        ? [String(data.target_html_css ?? "<!DOCTYPE html>")]
-        : challenge.category === "bug_fix"
-          ? [String(data.expected_fix ?? "Precise bug diagnosis detected.")]
-          : challenge.category === "architecture_pick"
-            ? []
-            : Array.from({ length: promptCount }).map(
-                (_item, index) =>
-                  `Demo AI response ${index + 1} for ${challenge.code}.`,
-              );
-
-  return {
-    accuracy,
-    tokenScore,
-    timeLabel: "1:23",
-    combinedScore: 847,
-    feedback:
-      "Good prompt clarity. You identified the important requirements, but there is still room to tighten output constraints and reduce ambiguity.",
-    aiResponses,
-  };
-}
-
 export function ChallengeWorkbench({
   challenge,
   contextType = "practice",
@@ -79,6 +50,7 @@ export function ChallengeWorkbench({
   const [submission, setSubmission] = useState<SubmissionView | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("plan");
+  const [startedAt, setStartedAt] = useState(() => Date.now());
 
   const promptMode =
     challenge.category === "spec_to_prompt"
@@ -93,20 +65,22 @@ export function ChallengeWorkbench({
     return [singlePrompt].filter(Boolean);
   }, [actPrompt, challenge.category, planPrompt, promptMode, singlePrompt]);
 
+  useEffect(() => {
+    setStartedAt(Date.now());
+    setSubmission(null);
+  }, [challenge.id, contextId, contextType]);
+
   async function submitToApi() {
     const token = auth.session?.access_token;
     const prompts =
       challenge.category === "architecture_pick"
         ? []
         : preparedPrompts.map((prompt) => ({
-            prompt,
-            token_count: Math.ceil(prompt.length / 4),
-          }));
+          prompt,
+        }));
 
     if (!token) {
-      setSubmission(buildDemoSubmission(challenge, preparedPrompts.length || 1));
-      toast("Prompt submitted. Evaluating demo mode...");
-      return;
+      throw new Error("Sign in is required to submit and score a challenge.");
     }
 
     const response = (await apiClient.createSubmission(
@@ -121,7 +95,10 @@ export function ChallengeWorkbench({
             : undefined,
         context_type: contextType,
         context_id: contextId,
-        time_taken_seconds: 83,
+        time_taken_seconds: Math.max(
+          1,
+          Math.round((Date.now() - startedAt) / 1000),
+        ),
       },
       token,
     )) as any;

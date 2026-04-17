@@ -1,8 +1,38 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useState } from "react";
 import { Card } from "@/components/ui/card";
 import { sampleRecruiterTests } from "@shared/seed-data";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import type { RecruiterTestRecord } from "@shared/types";
 
 export default function RecruiterTestsPage() {
+  const auth = useAuth();
+  const [tests, setTests] = useState<RecruiterTestRecord[]>(sampleRecruiterTests);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getRecruiterTests(auth.session?.access_token)
+      .then((response) => {
+        if (!cancelled) {
+          setTests(response.tests);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTests(sampleRecruiterTests);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.session?.access_token]);
+
   return (
     <div className="space-y-6">
       <div>
@@ -14,7 +44,7 @@ export default function RecruiterTestsPage() {
         </h1>
       </div>
       <div className="space-y-3">
-        {sampleRecruiterTests.map((test) => (
+        {tests.map((test) => (
           <Link key={test.id} href={`/recruiter/tests/${test.id}`}>
             <Card className="surface-card rounded-2xl p-5 transition hover:border-[#334155]">
               <div className="flex items-center justify-between gap-4">

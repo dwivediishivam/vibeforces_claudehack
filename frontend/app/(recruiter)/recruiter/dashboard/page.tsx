@@ -1,12 +1,50 @@
+"use client";
+
 import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/common/stat-card";
 import { mockRecruiterStats } from "@/lib/data/mock";
 import { sampleRecruiterTests } from "@shared/seed-data";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import type { RecruiterTestRecord } from "@shared/types";
 
 export default function RecruiterDashboardPage() {
+  const auth = useAuth();
+  const [tests, setTests] = useState<RecruiterTestRecord[]>(sampleRecruiterTests);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getRecruiterTests(auth.session?.access_token)
+      .then((response) => {
+        if (!cancelled) {
+          setTests(response.tests);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTests(sampleRecruiterTests);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [auth.session?.access_token]);
+
+  const stats = useMemo(() => {
+    return {
+      testsCreated: tests.length,
+      candidatesTested: mockRecruiterStats.candidatesTested,
+      avgScore: mockRecruiterStats.avgScore,
+    };
+  }, [tests]);
+
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -30,9 +68,9 @@ export default function RecruiterDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Tests Created" value={String(mockRecruiterStats.testsCreated)} change="+1 this week" />
-        <StatCard label="Candidates Tested" value={String(mockRecruiterStats.candidatesTested)} change="+4 this week" accent="green" />
-        <StatCard label="Avg Score" value={mockRecruiterStats.avgScore.toFixed(1)} change="+0.3" accent="amber" />
+        <StatCard label="Tests Created" value={String(stats.testsCreated)} change="+1 this week" />
+        <StatCard label="Candidates Tested" value={String(stats.candidatesTested)} change="+4 this week" accent="green" />
+        <StatCard label="Avg Score" value={stats.avgScore.toFixed(1)} change="+0.3" accent="amber" />
       </div>
 
       <Card className="surface-card rounded-2xl p-6">
@@ -40,7 +78,7 @@ export default function RecruiterDashboardPage() {
           Your Tests
         </div>
         <div className="mt-4 space-y-3">
-          {sampleRecruiterTests.map((test) => (
+          {tests.map((test) => (
             <Link
               key={test.id}
               href={`/recruiter/tests/${test.id}`}

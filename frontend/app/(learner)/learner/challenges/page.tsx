@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Search } from "lucide-react";
 import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
 import { DifficultyBadge } from "@/components/common/difficulty-badge";
 import { RatingBadge } from "@/components/common/rating-badge";
 import { Input } from "@/components/ui/input";
@@ -11,12 +12,34 @@ import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 export default function ChallengesPage() {
+  const [challenges, setChallenges] = useState(challengeSummaryCards);
   const [category, setCategory] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<string>("all");
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getChallenges()
+      .then((response) => {
+        if (!cancelled) {
+          setChallenges(response.challenges);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setChallenges(challengeSummaryCards);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
-    return challengeSummaryCards.filter((challenge) => {
+    return challenges.filter((challenge) => {
       const matchesCategory =
         category === "all" || challenge.category === category;
       const matchesDifficulty =
@@ -26,7 +49,7 @@ export default function ChallengesPage() {
         challenge.description.toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesDifficulty && matchesSearch;
     });
-  }, [category, difficulty, search]);
+  }, [category, challenges, difficulty, search]);
 
   return (
     <div className="space-y-6">
@@ -34,9 +57,9 @@ export default function ChallengesPage() {
         <div className="text-sm uppercase tracking-[2px] text-[#64748b]">
           Challenges
         </div>
-        <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
-          30 challenges across 5 categories
-        </h1>
+          <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
+          {challenges.length} challenges across 5 categories
+          </h1>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">

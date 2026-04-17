@@ -81,12 +81,12 @@ export const apiClient = {
     try {
       return await request<{
         contest: typeof launchContest;
-        challenges: typeof challengeSummaryCards;
+        challenges: typeof challengeLibrary;
       }>(`/contests/${id}`);
     } catch {
       return {
         contest: launchContest,
-        challenges: challengeSummaryCards.filter((challenge) =>
+        challenges: challengeLibrary.filter((challenge) =>
           launchContest.challenge_ids.includes(challenge.id),
         ),
       };
@@ -130,7 +130,7 @@ export const apiClient = {
     try {
       return await request<{
         test: (typeof sampleRecruiterTests)[number];
-        challenges: typeof challengeSummaryCards;
+        challenges: typeof challengeLibrary;
       }>(`/tests/take/${code}`);
     } catch {
       const test =
@@ -138,38 +138,41 @@ export const apiClient = {
         sampleRecruiterTests[0];
       return {
         test,
-        challenges: challengeSummaryCards.filter((challenge) =>
+        challenges: challengeLibrary.filter((challenge) =>
           test.challenge_ids.includes(challenge.id),
         ),
       };
     }
   },
   async createSubmission(payload: unknown, token?: string | null) {
-    return request("/submissions", {
+    return request<{
+      submission: Record<string, unknown>;
+      challenge: Record<string, unknown>;
+    }>("/submissions", {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
   async getMySubmissions(token?: string | null) {
-    return request("/submissions/my", { token });
+    return request<{ submissions: Record<string, unknown>[] }>("/submissions/my", { token });
   },
   async createTest(payload: unknown, token?: string | null) {
-    return request("/tests", {
+    return request<{ test: Record<string, unknown> }>("/tests", {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
   async startTest(id: string, token?: string | null) {
-    return request(`/tests/${id}/start`, { method: "POST", token });
+    return request<{ attempt: Record<string, unknown> }>(`/tests/${id}/start`, { method: "POST", token });
   },
   async completeTest(
     id: string,
     payload: unknown,
     token?: string | null,
   ) {
-    return request(`/tests/${id}/complete`, {
+    return request<{ attempt: Record<string, unknown> }>(`/tests/${id}/complete`, {
       method: "POST",
       body: JSON.stringify(payload),
       token,
@@ -195,17 +198,17 @@ export const apiClient = {
     }
   },
   async joinContest(id: string, token?: string | null) {
-    return request(`/contests/${id}/join`, { method: "POST", token });
+    return request<{ joined: boolean }>(`/contests/${id}/join`, { method: "POST", token });
   },
   async createContest(payload: unknown, token?: string | null) {
-    return request("/admin/contests", {
+    return request<{ contest: Record<string, unknown> }>("/admin/contests", {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
   async updateContest(id: string, payload: unknown, token?: string | null) {
-    return request(`/admin/contests/${id}`, {
+    return request<{ contest: Record<string, unknown> }>(`/admin/contests/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
       token,

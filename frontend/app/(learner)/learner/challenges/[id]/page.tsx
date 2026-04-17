@@ -1,14 +1,15 @@
-"use client";
-
-import { useParams } from "next/navigation";
-import { challengeLibrary } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
 import { ChallengeWorkbench } from "@/components/challenges/challenge-workbench";
 import { EmptyState } from "@/components/common/empty-state";
 import { Swords } from "lucide-react";
 
-export default function ChallengeDetailPage() {
-  const params = useParams<{ id: string }>();
-  const challenge = challengeLibrary.find((item) => item.id === params.id);
+export default async function ChallengeDetailPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const { challenge } = await apiClient.getChallenge(id);
 
   if (!challenge) {
     return (

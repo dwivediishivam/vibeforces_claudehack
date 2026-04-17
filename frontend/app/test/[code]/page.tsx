@@ -1,29 +1,73 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { sampleRecruiterTests } from "@shared/seed-data";
 import { challengeLibrary } from "@/lib/data/mock";
 import { ChallengeWorkbench } from "@/components/challenges/challenge-workbench";
 import { CountdownTimer } from "@/components/common/countdown-timer";
 import { ProctoringBanner } from "@/components/common/proctoring-banner";
+import { apiClient } from "@/lib/api";
+import { useAuth } from "@/hooks/useAuth";
+import type { ChallengeRecord, RecruiterTestRecord } from "@shared/types";
 
 export default function TakeTestPage() {
+  const auth = useAuth();
   const params = useParams<{ code: string }>();
-  const test =
+  const fallbackTest =
     sampleRecruiterTests.find((item) => item.share_code === params.code) ??
     sampleRecruiterTests[0];
-  const challenges = useMemo(
-    () =>
-      challengeLibrary.filter((challenge) =>
-        test.challenge_ids.includes(challenge.id),
-      ),
-    [test.challenge_ids],
+  const [test, setTest] = useState<RecruiterTestRecord>(fallbackTest);
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>(
+    challengeLibrary.filter((challenge) =>
+      fallbackTest.challenge_ids.includes(challenge.id),
+    ),
   );
+
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getTestByCode(params.code)
+      .then((response) => {
+        if (cancelled) return;
+        setTest(response.test);
+        setChallenges(response.challenges);
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setTest(fallbackTest);
+          setChallenges(
+            challengeLibrary.filter((challenge) =>
+              fallbackTest.challenge_ids.includes(challenge.id),
+            ),
+          );
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackTest, params.code]);
+
+  useEffect(() => {
+    if (!auth.session?.access_token || !test.id) {
+      return;
+    }
+
+    apiClient.startTest(test.id, auth.session.access_token).catch(() => {});
+  }, [auth.session?.access_token, test.id]);
+
   const [activeChallengeId, setActiveChallengeId] = useState(challenges[0]?.id);
   const activeChallenge =
     challenges.find((challenge) => challenge.id === activeChallengeId) ??
     challenges[0];
+
+  useEffect(() => {
+    if (challenges.length > 0 && !activeChallengeId) {
+      setActiveChallengeId(challenges[0].id);
+    }
+  }, [activeChallengeId, challenges]);
 
   return (
     <div className="min-h-screen px-4 py-10 lg:px-8">
