@@ -1,8 +1,10 @@
+import fs from "node:fs";
 import path from "node:path";
 import dotenv from "dotenv";
 import { randomUUID } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 import { challengeLibrary } from "../../shared/challenge-library";
+import type { ChallengeRecord } from "../../shared/types";
 import {
   defaultSeedPassword,
   launchContest,
@@ -28,6 +30,106 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
     persistSession: false,
   },
 });
+
+const rootDir = process.cwd();
+const voiceNotesDir = path.join(rootDir, "frontend/public/voice-notes");
+const screenshotsDir = path.join(rootDir, "frontend/public/screenshots");
+
+const contentTypes: Record<string, string> = {
+  ".mp3": "audio/mpeg",
+  ".png": "image/png",
+  ".svg": "image/svg+xml",
+};
+
+function getContentType(filePath: string) {
+  return contentTypes[path.extname(filePath).toLowerCase()] ?? "application/octet-stream";
+}
+
+function storagePathFor(relativePath: string) {
+  return relativePath.replace(/^\/+/, "");
+}
+
+async function uploadBucketDirectory(bucket: "voice-notes" | "screenshots", dir: string) {
+  const urls = new Map<string, string>();
+  const files = fs.readdirSync(dir);
+
+  for (const filename of files) {
+    const absolutePath = path.join(dir, filename);
+    if (!fs.statSync(absolutePath).isFile()) continue;
+
+    const objectPath = storagePathFor(filename);
+    const { error } = await supabase.storage.from(bucket).upload(
+      objectPath,
+      fs.readFileSync(absolutePath),
+      {
+        upsert: true,
+        contentType: getContentType(absolutePath),
+      },
+    );
+
+    if (error) throw error;
+
+    const { data } = supabase.storage.from(bucket).getPublicUrl(objectPath);
+    urls.set(`/${bucket}/${filename}`, data.publicUrl);
+  }
+
+  return urls;
+}
+
+function mapAssetUrl(
+  source: string,
+  voiceNoteUrls: Map<string, string>,
+  screenshotUrls: Map<string, string>,
+) {
+  if (!source.startsWith("/")) return source;
+  if (source.startsWith("/voice-notes/")) {
+    return voiceNoteUrls.get(source) ?? source;
+  }
+  if (source.startsWith("/screenshots/")) {
+    return screenshotUrls.get(source) ?? source;
+  }
+  return source;
+}
+
+function buildHostedChallenges(
+  voiceNoteUrls: Map<string, string>,
+  screenshotUrls: Map<string, string>,
+): ChallengeRecord[] {
+  return challengeLibrary.map((challenge) => {
+    if (challenge.category === "spec_to_prompt") {
+      return {
+        ...challenge,
+        challenge_data: {
+          ...challenge.challenge_data,
+          voice_note_url: mapAssetUrl(
+            challenge.challenge_data.voice_note_url,
+            voiceNoteUrls,
+            screenshotUrls,
+          ),
+          supplementary_images: challenge.challenge_data.supplementary_images.map(
+            (source) => mapAssetUrl(source, voiceNoteUrls, screenshotUrls),
+          ),
+        },
+      };
+    }
+
+    if (challenge.category === "ui_reproduction") {
+      return {
+        ...challenge,
+        challenge_data: {
+          ...challenge.challenge_data,
+          target_screenshot_url: mapAssetUrl(
+            challenge.challenge_data.target_screenshot_url,
+            voiceNoteUrls,
+            screenshotUrls,
+          ),
+        },
+      };
+    }
+
+    return challenge;
+  });
+}
 
 async function findUserByEmail(email: string) {
   const { data, error } = await supabase.auth.admin.listUsers({
@@ -164,6 +266,9 @@ async function ensureBuckets() {
 
 async function main() {
   await ensureBuckets();
+  const voiceNoteUrls = await uploadBucketDirectory("voice-notes", voiceNotesDir);
+  const screenshotUrls = await uploadBucketDirectory("screenshots", screenshotsDir);
+  const hostedChallenges = buildHostedChallenges(voiceNoteUrls, screenshotUrls);
 
   const adminUser = await ensureUser({
     email: seedAdmin.email,
@@ -205,7 +310,7 @@ async function main() {
 
   const { error: challengeError } = await supabase
     .from("challenges")
-    .upsert(challengeLibrary, { onConflict: "id" });
+    .upsert(hostedChallenges, { onConflict: "id" });
 
   if (challengeError) throw challengeError;
 

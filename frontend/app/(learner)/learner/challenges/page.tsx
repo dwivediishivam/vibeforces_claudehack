@@ -1,22 +1,59 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
-import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
+import { ChevronRight, Search, Swords } from "lucide-react";
+import { categoryLabels } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
 import { DifficultyBadge } from "@/components/common/difficulty-badge";
 import { RatingBadge } from "@/components/common/rating-badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/common/empty-state";
+import type { ChallengeRecord } from "@shared/types";
 
 export default function ChallengesPage() {
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<string>("all");
   const [search, setSearch] = useState("");
 
+  useEffect(() => {
+    let cancelled = false;
+
+    apiClient
+      .getChallenges()
+      .then((response) => {
+        if (!cancelled) {
+          setChallenges(response.challenges);
+          setError(null);
+        }
+      })
+      .catch((nextError) => {
+        if (!cancelled) {
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Challenges could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
   const filtered = useMemo(() => {
-    return challengeSummaryCards.filter((challenge) => {
+    return challenges.filter((challenge) => {
       const matchesCategory =
         category === "all" || challenge.category === category;
       const matchesDifficulty =
@@ -26,7 +63,7 @@ export default function ChallengesPage() {
         challenge.description.toLowerCase().includes(search.toLowerCase());
       return matchesCategory && matchesDifficulty && matchesSearch;
     });
-  }, [category, difficulty, search]);
+  }, [category, challenges, difficulty, search]);
 
   return (
     <div className="space-y-6">
@@ -34,11 +71,26 @@ export default function ChallengesPage() {
         <div className="text-sm uppercase tracking-[2px] text-[#64748b]">
           Challenges
         </div>
-        <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
-          30 challenges across 5 categories
-        </h1>
+          <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
+          {challenges.length} challenges across 5 categories
+          </h1>
       </div>
 
+      {loading ? (
+        <Card className="surface-card rounded-2xl p-10 text-center text-sm text-[#94a3b8]">
+          Loading challenge catalog...
+        </Card>
+      ) : null}
+
+      {!loading && error ? (
+        <EmptyState
+          icon={<Swords className="size-12" />}
+          title="Challenge catalog unavailable"
+          description={error}
+        />
+      ) : null}
+
+      {!loading && !error ? (
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         <Card className="surface-card rounded-2xl p-4">
           <div className="text-xs uppercase tracking-[2px] text-[#64748b]">
@@ -103,6 +155,13 @@ export default function ChallengesPage() {
               className="h-12 rounded-2xl border-[#1e293b] bg-[#0a0f1e] pl-11"
             />
           </div>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<Swords className="size-12" />}
+              title="No challenges match these filters"
+              description="Try a broader category, difficulty, or search query."
+            />
+          ) : null}
           {filtered.map((challenge) => (
             <Link
               key={challenge.id}
@@ -133,6 +192,7 @@ export default function ChallengesPage() {
           ))}
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

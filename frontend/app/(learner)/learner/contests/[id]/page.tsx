@@ -1,28 +1,116 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { challengeLibrary } from "@/lib/data/mock";
-import { launchContest } from "@shared/seed-data";
+import { TimerReset } from "lucide-react";
 import { ChallengeWorkbench } from "@/components/challenges/challenge-workbench";
 import { CountdownTimer } from "@/components/common/countdown-timer";
 import { LeaderboardTable } from "@/components/leaderboard/leaderboard-table";
-import { mockLeaderboard } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
+import { EmptyState } from "@/components/common/empty-state";
+import type { ChallengeRecord, ContestRecord } from "@shared/types";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ContestArenaPage() {
+  const auth = useAuth();
   const params = useParams<{ id: string }>();
-  const contest = params.id === launchContest.id ? launchContest : launchContest;
-  const challenges = useMemo(
-    () =>
-      challengeLibrary.filter((challenge) =>
-        contest.challenge_ids.includes(challenge.id),
-      ),
-    [contest.challenge_ids],
-  );
+  const [contest, setContest] = useState<ContestRecord | null>(null);
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>([]);
+  const [leaderboard, setLeaderboard] = useState<any[]>([]);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadContest() {
+      try {
+        const [contestResponse, leaderboardResponse] = await Promise.all([
+          apiClient.getContest(params.id),
+          apiClient.getContestLeaderboard(params.id),
+        ]);
+
+        if (cancelled) return;
+        setContest(contestResponse.contest);
+        setChallenges(contestResponse.challenges);
+        setLeaderboard(leaderboardResponse.leaderboard);
+        setError(null);
+      } catch (nextError) {
+        if (!cancelled) {
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Contest arena could not be loaded.",
+          );
+        }
+      }
+    }
+
+    void loadContest();
+
+    const interval = setInterval(() => {
+      void apiClient
+        .getContestLeaderboard(params.id)
+        .then((response) => {
+          if (!cancelled) {
+            setLeaderboard(response.leaderboard);
+          }
+        })
+        .catch(() => {});
+    }, 15000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [params.id]);
+
+  useEffect(() => {
+    if (!contest?.id || !auth.session?.access_token) return;
+
+    apiClient.joinContest(contest.id, auth.session.access_token).catch(() => {});
+  }, [auth.session?.access_token, contest?.id]);
+
   const [activeChallengeId, setActiveChallengeId] = useState(challenges[0]?.id);
   const activeChallenge =
     challenges.find((challenge) => challenge.id === activeChallengeId) ??
     challenges[0];
+
+  useEffect(() => {
+    if (challenges.length > 0 && !activeChallengeId) {
+      setActiveChallengeId(challenges[0].id);
+    }
+  }, [activeChallengeId, challenges]);
+
+  const countdownTarget = useMemo(() => {
+    if (!contest) return null;
+
+    if (contest.status === "active") {
+      return new Date(
+        new Date(contest.scheduled_at).getTime() +
+          contest.duration_minutes * 60_000,
+      ).toISOString();
+    }
+
+    return contest.scheduled_at;
+  }, [contest]);
+
+  if (error) {
+    return (
+      <EmptyState
+        icon={<TimerReset className="size-12" />}
+        title="Contest unavailable"
+        description={error}
+      />
+    );
+  }
+
+  if (!contest || !countdownTarget) {
+    return (
+      <div className="rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-8 text-center text-sm text-[#94a3b8]">
+        Loading contest arena...
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -43,7 +131,7 @@ export default function ContestArenaPage() {
             Time Left
           </div>
           <CountdownTimer
-            targetDate={contest.scheduled_at}
+            targetDate={countdownTarget}
             className="mt-2 text-2xl font-mono-ui text-[#f1f5f9]"
           />
         </div>
@@ -80,7 +168,7 @@ export default function ContestArenaPage() {
           <div className="surface-card rounded-2xl p-4">
             <div className="text-sm font-mono-ui text-[#f1f5f9]">Live Leaderboard</div>
           </div>
-          <LeaderboardTable entries={mockLeaderboard.slice(0, 5)} />
+          <LeaderboardTable entries={leaderboard} />
         </div>
       </div>
     </div>

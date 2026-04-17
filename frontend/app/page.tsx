@@ -13,7 +13,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Logo } from "@/components/layout/logo";
-import { challengeSummaryCards } from "@/lib/data/mock";
+import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 const featureCards = [
@@ -55,7 +55,20 @@ const featureCards = [
   },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const [challenges, contests] = await Promise.all([
+    apiClient.getChallenges().then((response) => response.challenges).catch(() => []),
+    apiClient.getContests().then((response) => response.contests).catch(() => []),
+  ]);
+  const previewChallenges = challenges.slice(0, 3);
+  const nextContest =
+    [...contests]
+      .filter((contest) => contest.status !== "completed")
+      .sort(
+        (left, right) =>
+          new Date(left.scheduled_at).getTime() - new Date(right.scheduled_at).getTime(),
+      )[0] ?? null;
+
   return (
     <div className="min-h-screen">
       <header className="sticky top-0 z-50 border-b border-[#1e293b] bg-[#030712]/80 backdrop-blur-xl">
@@ -92,7 +105,10 @@ export default function HomePage() {
               <div className="inline-flex items-center gap-2 rounded-full border border-[#334155] px-4 py-1.5 text-xs font-mono-ui text-[#94a3b8]">
                 <Sparkles className="size-3.5 text-[#a78bfa]" />
                 <span>
-                  <span className="text-[#a78bfa]">Season 1</span> — First contest live
+                  <span className="text-[#a78bfa]">Live Platform</span>
+                  {nextContest
+                    ? ` — Next arena: ${nextContest.title}`
+                    : " — Challenge catalog is ready"}
                 </span>
               </div>
               <h1 className="hero-gradient mt-8 text-5xl font-extrabold leading-[1.05] tracking-tight md:text-7xl">
@@ -157,7 +173,7 @@ export default function HomePage() {
                   Preview
                 </div>
                 <div className="mt-5 space-y-4">
-                  {challengeSummaryCards.slice(0, 3).map((challenge) => (
+                  {previewChallenges.map((challenge) => (
                     <div
                       key={challenge.id}
                       className="rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-4"
@@ -173,6 +189,11 @@ export default function HomePage() {
                       </div>
                     </div>
                   ))}
+                  {previewChallenges.length === 0 ? (
+                    <div className="rounded-2xl border border-dashed border-[#334155] bg-[#0a0f1e] p-4 text-sm text-[#94a3b8]">
+                      Challenge previews will appear here once the backend catalog is reachable.
+                    </div>
+                  ) : null}
                 </div>
               </Card>
             </div>

@@ -1,15 +1,38 @@
-import {
-  challengeLibrary,
-  challengeSummaryCards,
-  mockLeaderboard,
-  mockRecruiterCandidates,
-  mockContestBanner,
-} from "@/lib/data/mock";
-import { launchContest, sampleRecruiterTests } from "@shared/seed-data";
+import type {
+  ChallengeRecord,
+  ContestRecord,
+  LeaderboardEntry,
+  RecruiterTestRecord,
+} from "@shared/types";
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
   "http://localhost:3001/api/v1";
+
+type SubmissionRecord = Record<string, unknown>;
+
+type RecruiterAttemptRecord = {
+  id: string;
+  user_id: string;
+  total_score: number | null;
+  status: string;
+  started_at?: string | null;
+  completed_at?: string | null;
+  avg_accuracy?: number | null;
+  solved_count?: number;
+  total_time_seconds?: number;
+  profiles?: {
+    username?: string | null;
+    display_name?: string | null;
+    avatar_url?: string | null;
+  } | null;
+};
+
+type RecruiterTestStats = {
+  candidates_tested: number;
+  completed_attempts: number;
+  avg_score: number;
+};
 
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
@@ -38,180 +61,113 @@ async function request<T>(
 }
 
 export const apiClient = {
-  async getChallenges(filters?: Record<string, string>) {
-    try {
-      const search = new URLSearchParams(filters).toString();
-      return await request<{ challenges: typeof challengeLibrary }>(
-        `/challenges${search ? `?${search}` : ""}`,
-      );
-    } catch {
-      return { challenges: challengeLibrary.map((challenge) => ({ ...challenge })) };
-    }
+  getChallenges(filters?: Record<string, string>) {
+    const search = new URLSearchParams(filters).toString();
+    return request<{ challenges: ChallengeRecord[] }>(
+      `/challenges${search ? `?${search}` : ""}`,
+    );
   },
-  async getChallenge(id: string) {
-    try {
-      return await request<{ challenge: (typeof challengeLibrary)[number] }>(
-        `/challenges/${id}`,
-      );
-    } catch {
-      return {
-        challenge:
-          challengeLibrary.find((challenge) => challenge.id === id) ??
-          challengeLibrary[0],
-      };
-    }
+  getChallenge(id: string) {
+    return request<{ challenge: ChallengeRecord }>(`/challenges/${id}`);
   },
-  async getPracticeLeaderboard() {
-    try {
-      return await request<{ leaderboard: typeof mockLeaderboard }>(
-        "/leaderboard/practice",
-      );
-    } catch {
-      return { leaderboard: mockLeaderboard };
-    }
+  getPracticeLeaderboard() {
+    return request<{ leaderboard: LeaderboardEntry[] }>("/leaderboard/practice");
   },
-  async getContests() {
-    try {
-      return await request<{ contests: typeof launchContest[] }>("/contests");
-    } catch {
-      return { contests: [launchContest] };
-    }
+  getContests() {
+    return request<{ contests: ContestRecord[] }>("/contests");
   },
-  async getContest(id: string) {
-    try {
-      return await request<{
-        contest: typeof launchContest;
-        challenges: typeof challengeSummaryCards;
-      }>(`/contests/${id}`);
-    } catch {
-      return {
-        contest: launchContest,
-        challenges: challengeSummaryCards.filter((challenge) =>
-          launchContest.challenge_ids.includes(challenge.id),
-        ),
-      };
-    }
+  getContest(id: string) {
+    return request<{
+      contest: ContestRecord;
+      challenges: ChallengeRecord[];
+    }>(`/contests/${id}`);
   },
-  async getContestLeaderboard(id: string) {
-    try {
-      return await request<{ leaderboard: typeof mockLeaderboard }>(
-        `/contests/${id}/leaderboard`,
-      );
-    } catch {
-      return { leaderboard: mockLeaderboard.slice(0, 5) };
-    }
+  getContestLeaderboard(id: string) {
+    return request<{ leaderboard: LeaderboardEntry[] }>(
+      `/contests/${id}/leaderboard`,
+    );
   },
-  async getRecruiterTests(token?: string | null) {
-    try {
-      return await request<{ tests: typeof sampleRecruiterTests }>(
-        "/tests",
-        { token },
-      );
-    } catch {
-      return { tests: sampleRecruiterTests };
-    }
+  getRecruiterTests(token?: string | null) {
+    return request<{
+      tests: RecruiterTestRecord[];
+      stats: RecruiterTestStats;
+    }>("/tests", { token });
   },
-  async getRecruiterTest(id: string, token?: string | null) {
-    try {
-      return await request<{
-        test: (typeof sampleRecruiterTests)[number];
-        attempts: typeof mockRecruiterCandidates;
-      }>(`/tests/${id}`, { token });
-    } catch {
-      return {
-        test:
-          sampleRecruiterTests.find((test) => test.id === id) ??
-          sampleRecruiterTests[0],
-        attempts: mockRecruiterCandidates,
-      };
-    }
+  getRecruiterTest(id: string, token?: string | null) {
+    return request<{
+      test: RecruiterTestRecord;
+      attempts: RecruiterAttemptRecord[];
+      challenges: ChallengeRecord[];
+    }>(`/tests/${id}`, { token });
   },
-  async getTestByCode(code: string) {
-    try {
-      return await request<{
-        test: (typeof sampleRecruiterTests)[number];
-        challenges: typeof challengeSummaryCards;
-      }>(`/tests/take/${code}`);
-    } catch {
-      const test =
-        sampleRecruiterTests.find((item) => item.share_code === code) ??
-        sampleRecruiterTests[0];
-      return {
-        test,
-        challenges: challengeSummaryCards.filter((challenge) =>
-          test.challenge_ids.includes(challenge.id),
-        ),
-      };
-    }
+  getTestByCode(code: string) {
+    return request<{
+      test: RecruiterTestRecord;
+      challenges: ChallengeRecord[];
+    }>(`/tests/take/${code}`);
   },
-  async createSubmission(payload: unknown, token?: string | null) {
-    return request("/submissions", {
+  createSubmission(payload: unknown, token?: string | null) {
+    return request<{
+      submission: SubmissionRecord;
+      challenge: Record<string, unknown>;
+    }>("/submissions", {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
-  async getMySubmissions(token?: string | null) {
-    return request("/submissions/my", { token });
+  getMySubmissions(token?: string | null) {
+    return request<{ submissions: SubmissionRecord[] }>("/submissions/my", {
+      token,
+    });
   },
-  async createTest(payload: unknown, token?: string | null) {
-    return request("/tests", {
+  createTest(payload: unknown, token?: string | null) {
+    return request<{ test: RecruiterTestRecord }>("/tests", {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
-  async startTest(id: string, token?: string | null) {
-    return request(`/tests/${id}/start`, { method: "POST", token });
+  startTest(id: string, token?: string | null) {
+    return request<{ attempt: Record<string, unknown> }>(`/tests/${id}/start`, {
+      method: "POST",
+      token,
+    });
   },
-  async completeTest(
-    id: string,
-    payload: unknown,
-    token?: string | null,
-  ) {
-    return request(`/tests/${id}/complete`, {
+  completeTest(id: string, payload: unknown, token?: string | null) {
+    return request<{ attempt: Record<string, unknown> }>(`/tests/${id}/complete`, {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
-  async getAdminStats(token?: string | null) {
-    try {
-      return await request<{
-        stats: {
-          total_users: number;
-          total_submissions: number;
-          active_contests: number;
-        };
-      }>("/admin/stats", { token });
-    } catch {
-      return {
-        stats: {
-          total_users: mockLeaderboard.length + 2,
-          total_submissions: 248,
-          active_contests: 1,
-        },
+  getAdminStats(token?: string | null) {
+    return request<{
+      stats: {
+        total_users: number;
+        total_submissions: number;
+        active_contests: number;
       };
-    }
+    }>("/admin/stats", { token });
   },
-  async joinContest(id: string, token?: string | null) {
-    return request(`/contests/${id}/join`, { method: "POST", token });
+  joinContest(id: string, token?: string | null) {
+    return request<{ joined: boolean }>(`/contests/${id}/join`, {
+      method: "POST",
+      token,
+    });
   },
-  async createContest(payload: unknown, token?: string | null) {
-    return request("/admin/contests", {
+  createContest(payload: unknown, token?: string | null) {
+    return request<{ contest: ContestRecord }>("/admin/contests", {
       method: "POST",
       body: JSON.stringify(payload),
       token,
     });
   },
-  async updateContest(id: string, payload: unknown, token?: string | null) {
-    return request(`/admin/contests/${id}`, {
+  updateContest(id: string, payload: unknown, token?: string | null) {
+    return request<{ contest: ContestRecord }>(`/admin/contests/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload),
       token,
     });
-  },
-  fallback: {
-    contestBanner: mockContestBanner,
   },
 };

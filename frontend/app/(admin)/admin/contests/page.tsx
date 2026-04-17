@@ -1,10 +1,21 @@
 import Link from "next/link";
+import { Flame } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { launchContest } from "@shared/seed-data";
 import { cn } from "@/lib/utils";
+import { apiClient } from "@/lib/api";
+import { EmptyState } from "@/components/common/empty-state";
 
-export default function AdminContestsPage() {
+export default async function AdminContestsPage() {
+  const contests = await apiClient
+    .getContests()
+    .then((response) => response.contests)
+    .catch(() => []);
+  const orderedContests = [...contests].sort(
+    (left, right) =>
+      new Date(left.scheduled_at).getTime() - new Date(right.scheduled_at).getTime(),
+  );
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
@@ -26,14 +37,37 @@ export default function AdminContestsPage() {
           Create Contest
         </Link>
       </div>
-      <Link href={`/admin/contests/${launchContest.id}`}>
-        <Card className="surface-card rounded-2xl p-6 transition hover:border-[#334155]">
-          <div className="font-mono-ui text-lg text-[#f1f5f9]">{launchContest.title}</div>
-          <div className="mt-2 text-sm text-[#94a3b8]">
-            Scheduled for April 18, 2026 at 8:00 PM IST · {launchContest.duration_minutes} minutes
-          </div>
-        </Card>
-      </Link>
+      {orderedContests.length === 0 ? (
+        <EmptyState
+          icon={<Flame className="size-12" />}
+          title="No contests yet"
+          description="Create the first public arena to open registrations."
+        />
+      ) : (
+        orderedContests.map((contest) => (
+          <Link key={contest.id} href={`/admin/contests/${contest.id}`}>
+            <Card className="surface-card rounded-2xl p-6 transition hover:border-[#334155]">
+              <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <div className="font-mono-ui text-lg text-[#f1f5f9]">
+                    {contest.title}
+                  </div>
+                  <div className="mt-2 text-sm text-[#94a3b8]">
+                    {new Date(contest.scheduled_at).toLocaleString("en-IN", {
+                      dateStyle: "medium",
+                      timeStyle: "short",
+                    })}{" "}
+                    · {contest.duration_minutes} minutes
+                  </div>
+                </div>
+                <div className="text-xs uppercase tracking-[2px] text-[#64748b]">
+                  {contest.status}
+                </div>
+              </div>
+            </Card>
+          </Link>
+        ))
+      )}
     </div>
   );
 }

@@ -13,9 +13,11 @@ function formatRemaining(ms: number) {
 export function CountdownTimer({
   targetDate,
   className,
+  onExpire,
 }: {
   targetDate: string;
   className?: string;
+  onExpire?: () => void;
 }) {
   const target = useMemo(() => new Date(targetDate).getTime(), [targetDate]);
   const [remaining, setRemaining] = useState(target - Date.now());
@@ -24,6 +26,12 @@ export function CountdownTimer({
     const interval = setInterval(() => setRemaining(target - Date.now()), 1000);
     return () => clearInterval(interval);
   }, [target]);
+
+  useEffect(() => {
+    if (remaining <= 0) {
+      onExpire?.();
+    }
+  }, [onExpire, remaining]);
 
   return (
     <div className={className}>

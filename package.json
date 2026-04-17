@@ -14,6 +14,8 @@
     "start:backend": "npm --prefix backend run start",
     "lint": "npm --prefix frontend run lint && npm --prefix backend run lint",
     "typecheck": "npm --prefix frontend run typecheck && npm --prefix backend run typecheck",
+    "validate:challenges": "npm --prefix backend exec tsx backend/scripts/validate-challenges.ts",
+    "test:openai": "npm --prefix backend exec tsx backend/scripts/smoke-openai.ts",
     "db:migrate": "npm --prefix backend exec tsx backend/scripts/apply-migrations.ts",
     "db:seed:sql": "npm --prefix backend exec tsx backend/scripts/generate-seed-sql.ts",
     "db:seed": "npm run db:seed:sql && npm --prefix backend exec tsx backend/scripts/seed-supabase.ts",

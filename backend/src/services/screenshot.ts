@@ -29,7 +29,7 @@ export async function htmlToScreenshot(html: string) {
   });
 
   await page.close();
-  return screenshot as Buffer;
+  return Buffer.from(screenshot);
 }
 
 export async function fileToBase64Screenshot(filePath: string) {
@@ -47,5 +47,5 @@ export async function fileToBase64Screenshot(filePath: string) {
 
 export async function htmlToBase64Screenshot(html: string) {
   const buffer = await htmlToScreenshot(html);
-  return buffer.toString("base64");
+  return Buffer.from(buffer).toString("base64");
 }
