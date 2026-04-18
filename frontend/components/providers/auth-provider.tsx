@@ -27,12 +27,18 @@ type SignupInput = {
   role: Exclude<UserRole, "admin">;
 };
 
+type SignupResult = {
+  email: string;
+  requiresEmailConfirmation: boolean;
+  role: Exclude<UserRole, "admin">;
+};
+
 type AuthContextValue = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<void>;
-  signUp: (input: SignupInput) => Promise<void>;
+  signUp: (input: SignupInput) => Promise<SignupResult>;
   signOut: () => Promise<void>;
 };
 
@@ -48,6 +54,16 @@ async function loadProfile(userId: string) {
     .single();
 
   return data as Profile | null;
+}
+
+async function waitForProfile(userId: string) {
+  for (let attempt = 0; attempt < 12; attempt += 1) {
+    const profile = await loadProfile(userId);
+    if (profile) return profile;
+    await new Promise((resolve) => window.setTimeout(resolve, 250));
+  }
+
+  return null;
 }
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -111,10 +127,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!supabase) {
           throw new Error("Supabase auth is not configured for this environment.");
         }
-        const { error } = await supabase.auth.signUp({
+        const emailRedirectTo =
+          typeof window === "undefined"
+            ? undefined
+            : `${window.location.origin.replace(/\/$/, "")}/login`;
+        const { data, error } = await supabase.auth.signUp({
           email: input.email,
           password: input.password,
           options: {
+            emailRedirectTo,
             data: {
               username: input.username,
               display_name: input.displayName,
@@ -123,6 +144,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           },
         });
         if (error) throw error;
+
+        if (data.session?.user) {
+          setSession(data.session);
+          setProfile(await waitForProfile(data.session.user.id));
+          setLoading(false);
+        }
+
+        return {
+          email: input.email,
+          requiresEmailConfirmation: !data.session,
+          role: input.role,
+        };
       },
       async signOut() {
         if (!supabase) {

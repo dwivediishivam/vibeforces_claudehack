@@ -13,9 +13,31 @@ import adminRouter from "./routes/admin";
 
 const app = express();
 
+const allowedOrigins = new Set([
+  env.FRONTEND_URL,
+  "https://vibe-forces.vercel.app",
+  "https://project-ppyhn.vercel.app",
+  "https://vibeforces.vercel.app",
+  "http://localhost:3000",
+  "http://127.0.0.1:3000",
+]);
+
+function isAllowedOrigin(origin?: string) {
+  if (!origin) return true;
+  if (allowedOrigins.has(origin)) return true;
+  return /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+}
+
 app.use(
   cors({
-    origin: [env.FRONTEND_URL, "http://localhost:3000", "http://127.0.0.1:3000"],
+    origin(origin, callback) {
+      if (isAllowedOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error("Origin not allowed by CORS."));
+    },
     credentials: true,
   }),
 );

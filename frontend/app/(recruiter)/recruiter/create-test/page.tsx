@@ -257,8 +257,7 @@ export default function CreateTestPage() {
                   };
                 };
 
-                const appUrl =
-                  process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+                const appUrl = window.location.origin;
                 setCreatedLink(`${appUrl.replace(/\/$/, "")}/test/${response.test.share_code}`);
                 toast.success("Recruiter test created.");
               } catch (error) {

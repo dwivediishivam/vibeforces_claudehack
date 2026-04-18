@@ -7,7 +7,9 @@ import type {
 
 const API_BASE =
   process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  "http://localhost:3001/api/v1";
+  (process.env.NODE_ENV === "production"
+    ? "https://vibeforces-api.onrender.com/api/v1"
+    : "http://localhost:3001/api/v1");
 
 type SubmissionRecord = Record<string, unknown>;
 
@@ -51,11 +53,17 @@ async function request<T>(
   headers.set("Content-Type", "application/json");
   if (init?.token) headers.set("Authorization", `Bearer ${init.token}`);
 
-  const response = await fetch(`${API_BASE}${pathname}`, {
-    ...init,
-    headers,
-    cache: "no-store",
-  });
+  let response: Response;
+
+  try {
+    response = await fetch(`${API_BASE}${pathname}`, {
+      ...init,
+      headers,
+      cache: "no-store",
+    });
+  } catch {
+    throw new Error(`Unable to reach the VibeForces API at ${API_BASE}.`);
+  }
 
   return parseJson<T>(response);
 }

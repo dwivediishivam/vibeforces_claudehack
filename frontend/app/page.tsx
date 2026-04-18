@@ -112,11 +112,13 @@ export default async function HomePage() {
                 </span>
               </div>
               <h1 className="hero-gradient mt-8 text-5xl font-extrabold leading-[1.05] tracking-tight md:text-7xl">
-                Train Your Prompt Instincts.
+                VibeForces
               </h1>
-              <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-[#94a3b8]">
-                The competitive platform where vibe coders train, rank, and prove
-                they can ship.
+              <p className="mx-auto mt-5 max-w-2xl text-xl font-semibold text-[#f1f5f9]">
+                LeetCode for Vibecoders.
+              </p>
+              <p className="mx-auto mt-4 max-w-2xl text-lg leading-8 text-[#94a3b8]">
+                Training, Testing and Ranking Devs in 2026.
               </p>
               <div className="mt-10 flex flex-wrap justify-center gap-3">
                 <Link

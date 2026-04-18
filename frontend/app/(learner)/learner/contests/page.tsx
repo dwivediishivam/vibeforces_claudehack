@@ -6,6 +6,8 @@ import { CountdownTimer } from "@/components/common/countdown-timer";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
+export const dynamic = "force-dynamic";
+
 export default async function ContestsPage() {
   const { contests } = await apiClient.getContests();
   const upcoming = contests.filter((contest) => contest.status !== "completed");

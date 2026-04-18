@@ -65,15 +65,21 @@ export default function ChallengesPage() {
     });
   }, [category, challenges, difficulty, search]);
 
+  const challengeCountLabel = loading
+    ? "Loading challenge catalog"
+    : error
+      ? "Challenge catalog unavailable"
+      : `${challenges.length} challenges across 5 categories`;
+
   return (
     <div className="space-y-6">
       <div>
         <div className="text-sm uppercase tracking-[2px] text-[#64748b]">
           Challenges
         </div>
-          <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
-          {challenges.length} challenges across 5 categories
-          </h1>
+        <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
+          {challengeCountLabel}
+        </h1>
       </div>
 
       {loading ? (
