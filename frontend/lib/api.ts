@@ -6,10 +6,12 @@ import type {
 } from "@shared/types";
 
 const API_BASE =
-  process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-  (process.env.NODE_ENV === "production"
-    ? "https://vibeforces-api.onrender.com/api/v1"
-    : "http://localhost:3001/api/v1");
+  process.env.NODE_ENV === "production"
+    ? typeof window === "undefined"
+      ? process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+        "https://vibeforces-api.onrender.com/api/v1"
+      : "/api/v1"
+    : "http://localhost:3001/api/v1";
 
 type SubmissionRecord = Record<string, unknown>;
 
