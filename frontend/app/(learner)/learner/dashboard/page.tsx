@@ -9,6 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { StatCard } from "@/components/common/stat-card";
 import { CountdownTimer } from "@/components/common/countdown-timer";
+import { UserRatingBadge } from "@/components/common/rating-tier";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 
@@ -122,8 +123,17 @@ export default function LearnerDashboardPage() {
           <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9] md:text-4xl">
             Welcome back, {auth.displayName}
           </h1>
-          <p className="mt-2 text-sm text-[#94a3b8]">
-            Your vibe coding journey — keep the streak alive.
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            <UserRatingBadge rating={auth.profile?.rating ?? 1200} />
+            {auth.profile?.rating_peak ? (
+              <span className="text-xs font-mono-ui text-[#64748b]">
+                peak {auth.profile.rating_peak}
+              </span>
+            ) : null}
+          </div>
+          <p className="mt-3 text-sm text-[#94a3b8]">
+            Solve challenges to climb. Rating moves like Codeforces — Elo-based,
+            scaled by problem difficulty and how well you score.
           </p>
         </div>
         {contestBanner ? (

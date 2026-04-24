@@ -29,6 +29,83 @@ type SubmissionRow = {
   judge_feedback?: Record<string, unknown>;
 };
 
+function CompareView({
+  a,
+  b,
+  onClose,
+}: {
+  a: SubmissionRow;
+  b: SubmissionRow;
+  onClose: () => void;
+}) {
+  const renderSide = (sub: SubmissionRow) => {
+    const promptText = (sub.prompts ?? []).map((p) => p.prompt).join("\n\n---\n\n");
+    const aiText = (sub.ai_responses ?? []).map((r) => r.response).join("\n\n---\n\n");
+    return (
+      <div className="space-y-3 rounded-xl border border-[#1e293b] bg-[#030712] p-4">
+        <div className="flex items-center justify-between text-xs text-[#64748b]">
+          <span>{new Date(sub.created_at).toLocaleString()}</span>
+          <span className="font-mono-ui text-[#a78bfa]">
+            {Number(sub.combined_score).toFixed(1)} pts
+          </span>
+        </div>
+        <div className="grid grid-cols-3 gap-2 text-[11px] font-mono-ui text-[#94a3b8]">
+          <div>Acc {Number(sub.accuracy_score).toFixed(1)}</div>
+          <div>Tok {Math.round(Number(sub.token_score))}</div>
+          <div>{Math.floor(Number(sub.time_taken_seconds) / 60)}m</div>
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] uppercase tracking-[1.5px] text-[#64748b]">
+            Prompt
+          </div>
+          <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded bg-[#0a0f1e] p-2 font-mono-ui text-[11px] text-[#cbd5e1]">
+            {promptText || "(no prompt)"}
+          </pre>
+        </div>
+        <div>
+          <div className="mb-1 text-[10px] uppercase tracking-[1.5px] text-[#64748b]">
+            AI output
+          </div>
+          <pre className="max-h-44 overflow-auto whitespace-pre-wrap rounded bg-[#0a0f1e] p-2 font-mono-ui text-[11px] text-[#94a3b8]">
+            {aiText || "(no output)"}
+          </pre>
+        </div>
+      </div>
+    );
+  };
+  const scoreDelta =
+    Number(b.combined_score ?? 0) - Number(a.combined_score ?? 0);
+  return (
+    <div className="rounded-xl border border-[#7c3aed]/40 bg-[#7c3aed]/5 p-4">
+      <div className="mb-3 flex items-center justify-between">
+        <div className="text-sm text-[#cbd5e1]">
+          Comparing two of your submissions —{" "}
+          <span
+            className={`font-mono-ui ${
+              scoreDelta >= 0 ? "text-[#4ade80]" : "text-[#f87171]"
+            }`}
+          >
+            {scoreDelta >= 0 ? "+" : ""}
+            {scoreDelta.toFixed(1)} pts
+          </span>{" "}
+          delta
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="text-xs font-mono-ui text-[#94a3b8] hover:text-[#f1f5f9]"
+        >
+          close
+        </button>
+      </div>
+      <div className="grid gap-3 lg:grid-cols-2">
+        {renderSide(a)}
+        {renderSide(b)}
+      </div>
+    </div>
+  );
+}
+
 function formatTime(seconds: number) {
   const m = Math.floor(seconds / 60);
   const s = seconds % 60;
@@ -47,6 +124,8 @@ export function ChallengeInsights({
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [compareMode, setCompareMode] = useState(false);
+  const [compareIds, setCompareIds] = useState<string[]>([]);
 
   useEffect(() => {
     let cancelled = false;
@@ -159,6 +238,38 @@ export function ChallengeInsights({
             </div>
           ) : (
             <div className="space-y-2">
+              {submissions.length >= 2 ? (
+                <div className="flex items-center justify-between rounded-lg border border-[#1e293b] bg-[#111827]/60 px-3 py-2 text-xs text-[#94a3b8]">
+                  <div>
+                    {compareMode
+                      ? `Pick two submissions to compare (${compareIds.length}/2 selected)`
+                      : "Click two submissions side-by-side to see what changed"}
+                  </div>
+                  <button
+                    type="button"
+                    className="rounded-md border border-[#334155] px-2 py-1 font-mono-ui text-[11px] text-[#cbd5e1] hover:bg-[#1e293b]"
+                    onClick={() => {
+                      setCompareMode((value) => !value);
+                      setCompareIds([]);
+                      setExpanded(null);
+                    }}
+                  >
+                    {compareMode ? "Cancel compare" : "Compare submissions"}
+                  </button>
+                </div>
+              ) : null}
+
+              {compareMode && compareIds.length === 2 ? (
+                <CompareView
+                  a={submissions.find((s) => s.id === compareIds[0])!}
+                  b={submissions.find((s) => s.id === compareIds[1])!}
+                  onClose={() => {
+                    setCompareMode(false);
+                    setCompareIds([]);
+                  }}
+                />
+              ) : null}
+
               {submissions.map((sub) => {
                 const isOpen = expanded === sub.id;
                 const promptText = (sub.prompts ?? [])
@@ -168,14 +279,28 @@ export function ChallengeInsights({
                   .map((r) => r.response)
                   .join("\n\n---\n\n");
                 const feedback = (sub.judge_feedback as any)?.feedback ?? "";
+                const isSelected = compareIds.includes(sub.id);
                 return (
                   <div
                     key={sub.id}
-                    className="rounded-xl border border-[#1e293b] bg-[#0a0f1e]"
+                    className={`rounded-xl border bg-[#0a0f1e] ${
+                      isSelected ? "border-[#7c3aed]" : "border-[#1e293b]"
+                    }`}
                   >
                     <button
                       type="button"
-                      onClick={() => setExpanded(isOpen ? null : sub.id)}
+                      onClick={() => {
+                        if (compareMode) {
+                          setCompareIds((current) => {
+                            if (current.includes(sub.id))
+                              return current.filter((id) => id !== sub.id);
+                            if (current.length >= 2) return [current[1], sub.id];
+                            return [...current, sub.id];
+                          });
+                          return;
+                        }
+                        setExpanded(isOpen ? null : sub.id);
+                      }}
                       className="grid w-full grid-cols-[1fr_70px_70px_70px_80px] items-center gap-3 px-4 py-3 text-left text-sm text-[#cbd5e1] hover:bg-[#111827]"
                     >
                       <div className="text-xs text-[#64748b]">

@@ -173,6 +173,28 @@ export const apiClient = {
       token,
     });
   },
+  getMyProfile(token?: string | null) {
+    return request<{
+      profile: {
+        id: string;
+        username: string;
+        display_name: string;
+        role: string;
+        avatar_url: string | null;
+        rating: number;
+        rating_peak: number;
+        rating_solves: number;
+      } | null;
+      rating_history: Array<{
+        delta: number;
+        rating_before: number;
+        rating_after: number;
+        reason: string | null;
+        created_at: string;
+        challenge_id: string;
+      }>;
+    }>("/profile/me", { token });
+  },
   getAdminStats(token?: string | null) {
     return request<{
       stats: {

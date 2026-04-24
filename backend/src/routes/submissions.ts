@@ -32,6 +32,7 @@ import { htmlToBase64Screenshot, htmlToBase64ScreenshotSafe, fetchUrlToBase64 } 
 import { env } from "../config/env";
 import { normalizeProvider } from "../services/ai/dispatch";
 import { estimateTokens } from "../services/ai/openai";
+import { applyRatingChange } from "../services/rating";
 
 const router = Router();
 
@@ -335,6 +336,41 @@ router.post(
       } as Record<string, unknown>;
     }
 
+    let accuracyPercentile: number | null = null;
+    let combinedPercentile: number | null = null;
+    {
+      const { data: peerScoreRows } = await supabaseAdmin
+        .from("submissions")
+        .select("accuracy_score, combined_score")
+        .eq("challenge_id", body.challenge_id)
+        .eq("context_type", "practice")
+        .eq("status", "completed")
+        .neq("user_id", req.auth!.userId)
+        .limit(500);
+
+      const peerAccuracy = (peerScoreRows ?? [])
+        .map((row: any) => Number(row.accuracy_score ?? 0))
+        .filter((value: number) => Number.isFinite(value));
+      const peerCombined = (peerScoreRows ?? [])
+        .map((row: any) => Number(row.combined_score ?? 0))
+        .filter((value: number) => Number.isFinite(value));
+
+      const pct = (value: number, peers: number[]) => {
+        if (peers.length === 0) return null;
+        const lower = peers.filter((p) => p < value).length;
+        const equal = peers.filter((p) => p === value).length;
+        return Math.round(((lower + equal * 0.5) / peers.length) * 100);
+      };
+
+      accuracyPercentile = pct(accuracyScore, peerAccuracy);
+      combinedPercentile = pct(combinedScore, peerCombined);
+    }
+    judgeFeedback = {
+      ...judgeFeedback,
+      accuracy_percentile: accuracyPercentile,
+      combined_percentile: combinedPercentile,
+    } as Record<string, unknown>;
+
     const { data: submission, error: submissionError } = await supabaseAdmin
       .from("submissions")
       .insert({
@@ -358,6 +394,26 @@ router.post(
       .single();
 
     if (submissionError) throw submissionError;
+
+    let ratingChange: { before: number; after: number; delta: number } | null = null;
+    if (body.context_type === "practice") {
+      const { count: priorCount } = await supabaseAdmin
+        .from("submissions")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", req.auth!.userId)
+        .eq("challenge_id", body.challenge_id)
+        .eq("context_type", "practice")
+        .eq("status", "completed");
+
+      const isFirstSolve = (priorCount ?? 0) <= 1;
+      ratingChange = await applyRatingChange({
+        userId: req.auth!.userId,
+        challenge,
+        submissionId: (submission as any).id,
+        combinedScore,
+        isFirstSolve,
+      });
+    }
 
     if (body.context_type === "contest" && body.context_id) {
       const { data: currentContestSubmissions } = await supabaseAdmin
@@ -412,6 +468,7 @@ router.post(
     res.status(201).json({
       submission,
       challenge: getChallengeSummary(challenge),
+      rating_change: ratingChange,
     });
   }),
 );

@@ -1,4 +1,5 @@
 import type { ChallengeRow } from "../types";
+import { instructionsFor } from "./challenge-instructions";
 
 export function getChallengeSummary(challenge: ChallengeRow) {
   return {
@@ -9,6 +10,7 @@ export function getChallengeSummary(challenge: ChallengeRow) {
     rating: challenge.rating,
     title: challenge.title,
     description: challenge.description,
+    instructions: instructionsFor(String(challenge.code ?? "")),
   };
 }
 

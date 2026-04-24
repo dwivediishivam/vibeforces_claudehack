@@ -5,6 +5,7 @@ import { ArrowRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { buttonVariants } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
+import { UserRatingBadge } from "@/components/common/rating-tier";
 
 function dashboardHref(role: string | null) {
   if (role === "admin") return "/admin/dashboard";
@@ -17,11 +18,15 @@ export function HeaderAuthCta() {
   if (auth.loading) return <div className="h-9 w-32" />;
 
   if (auth.isAuthenticated) {
+    const rating = auth.profile?.rating ?? 1200;
     return (
       <div className="flex items-center gap-2">
         <span className="hidden text-xs font-mono-ui text-[#94a3b8] sm:inline">
           {auth.displayName}
         </span>
+        {auth.profile?.role === "learner" ? (
+          <UserRatingBadge rating={rating} showName={false} className="hidden sm:inline-flex" />
+        ) : null}
         <Link
           href={dashboardHref(auth.role)}
           className={cn(

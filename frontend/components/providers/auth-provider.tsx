@@ -17,6 +17,9 @@ type Profile = {
   display_name: string;
   role: UserRole;
   avatar_url?: string | null;
+  rating?: number | null;
+  rating_peak?: number | null;
+  rating_solves?: number | null;
 };
 
 type SignupInput = {
@@ -49,7 +52,9 @@ async function loadProfile(userId: string) {
   if (!supabase) return null;
   const { data } = await supabase
     .from("profiles")
-    .select("id, username, display_name, role, avatar_url")
+    .select(
+      "id, username, display_name, role, avatar_url, rating, rating_peak, rating_solves",
+    )
     .eq("id", userId)
     .single();
 

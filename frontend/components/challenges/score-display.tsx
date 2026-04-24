@@ -41,6 +41,8 @@ export function ScoreDisplay({
   feedback,
   onTryAgain,
   nextHref,
+  percentiles,
+  ratingChange,
 }: {
   accuracy: number;
   tokenScore: number;
@@ -49,11 +51,32 @@ export function ScoreDisplay({
   feedback: string;
   onTryAgain?: () => void;
   nextHref?: string;
+  percentiles?: {
+    accuracy?: number | null;
+    token?: number | null;
+    combined?: number | null;
+  };
+  ratingChange?: { before: number; after: number; delta: number } | null;
 }) {
   const cards = [
-    { label: "Accuracy", value: accuracy, suffix: "/10" },
-    { label: "Token Eff.", value: tokenScore, suffix: "%" },
-    { label: "Time", value: Number(timeLabel.replace(/[^\d.]/g, "")), suffix: "" },
+    {
+      label: "Accuracy",
+      value: accuracy,
+      suffix: "/10",
+      percentile: percentiles?.accuracy ?? null,
+    },
+    {
+      label: "Token Eff.",
+      value: tokenScore,
+      suffix: "%",
+      percentile: percentiles?.token ?? null,
+    },
+    {
+      label: "Time",
+      value: Number(timeLabel.replace(/[^\d.]/g, "")),
+      suffix: "",
+      percentile: null,
+    },
   ];
 
   return (
@@ -72,6 +95,19 @@ export function ScoreDisplay({
             <div className="mt-3 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
               <AnimatedMetric value={card.value} suffix={card.suffix} />
             </div>
+            {card.percentile !== null && card.percentile !== undefined ? (
+              <div className="mt-3">
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-[#1e293b]">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#7c3aed] to-[#a78bfa]"
+                    style={{ width: `${Math.max(2, card.percentile)}%` }}
+                  />
+                </div>
+                <div className="mt-1.5 text-[11px] font-mono-ui text-[#94a3b8]">
+                  Better than {card.percentile}% of solvers
+                </div>
+              </div>
+            ) : null}
           </div>
         ))}
         <div className="rounded-2xl border border-[#7c3aed]/30 bg-[#7c3aed]/10 p-5">
@@ -81,9 +117,34 @@ export function ScoreDisplay({
           <div className="mt-3 text-3xl font-bold font-mono-ui text-white">
             <AnimatedMetric value={combinedScore} suffix=" pts" />
           </div>
-          <div className="mt-2 text-sm text-[#cbd5e1]">Leaderboard-ready score</div>
+          {percentiles?.combined !== null && percentiles?.combined !== undefined ? (
+            <div className="mt-2 text-sm text-[#cbd5e1]">
+              Top <span className="font-mono-ui text-[#f1f5f9]">{100 - percentiles.combined}%</span> on this challenge
+            </div>
+          ) : (
+            <div className="mt-2 text-sm text-[#cbd5e1]">Leaderboard-ready score</div>
+          )}
         </div>
       </div>
+      {ratingChange && ratingChange.delta !== 0 ? (
+        <div
+          className={`flex items-center justify-between rounded-2xl border px-4 py-3 text-sm ${
+            ratingChange.delta > 0
+              ? "border-[#4ade80]/30 bg-[#4ade80]/5 text-[#bbf7d0]"
+              : "border-[#f87171]/30 bg-[#f87171]/5 text-[#fecaca]"
+          }`}
+        >
+          <span>
+            Rating: <span className="font-mono-ui">{ratingChange.before}</span>
+            <span className="mx-2 text-[#64748b]">→</span>
+            <span className="font-mono-ui font-bold">{ratingChange.after}</span>
+          </span>
+          <span className="font-mono-ui font-bold">
+            {ratingChange.delta > 0 ? "+" : ""}
+            {ratingChange.delta}
+          </span>
+        </div>
+      ) : null}
       <div className="surface-subtle rounded-2xl p-4 text-sm italic text-[#94a3b8]">
         {feedback}
       </div>

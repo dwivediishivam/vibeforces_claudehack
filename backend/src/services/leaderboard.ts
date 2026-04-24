@@ -8,10 +8,37 @@ export async function getPracticeLeaderboard() {
 
   if (error) throw error;
 
-  return (data ?? []).map((entry, index) => ({
+  const rows = (data ?? []).map((entry, index) => ({
     ...entry,
     rank: index + 1,
   }));
+
+  const userIds = rows
+    .map((r: any) => r.user_id)
+    .filter(Boolean) as string[];
+  if (userIds.length === 0) return rows;
+
+  const { data: profiles } = await supabaseAdmin
+    .from("profiles")
+    .select("id, rating, rating_peak")
+    .in("id", userIds);
+
+  const ratingByUser = new Map<string, { rating: number; rating_peak: number }>();
+  for (const profile of profiles ?? []) {
+    ratingByUser.set((profile as any).id, {
+      rating: Number((profile as any).rating ?? 1200),
+      rating_peak: Number((profile as any).rating_peak ?? 1200),
+    });
+  }
+
+  return rows
+    .map((row: any) => ({
+      ...row,
+      rating: ratingByUser.get(row.user_id)?.rating ?? 1200,
+      rating_peak: ratingByUser.get(row.user_id)?.rating_peak ?? 1200,
+    }))
+    .sort((a, b) => b.rating - a.rating)
+    .map((row, index) => ({ ...row, rank: index + 1 }));
 }
 
 export async function getChallengeLeaderboard(challengeId: string, limit = 50) {

@@ -72,6 +72,7 @@ export interface ChallengeRecord<T extends ChallengeData = ChallengeData> {
   rating: number;
   title: string;
   description: string;
+  instructions?: string;
   challenge_data: T;
   created_at?: string;
   updated_at?: string;

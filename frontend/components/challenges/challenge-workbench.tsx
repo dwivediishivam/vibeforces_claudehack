@@ -30,6 +30,12 @@ type SubmissionView = {
   combinedScore: number;
   feedback: string;
   aiResponses: string[];
+  percentiles?: {
+    accuracy?: number | null;
+    token?: number | null;
+    combined?: number | null;
+  };
+  ratingChange?: { before: number; after: number; delta: number } | null;
 };
 
 export function ChallengeWorkbench({
@@ -140,6 +146,12 @@ export function ChallengeWorkbench({
       aiResponses: (entry.ai_responses ?? []).map((item: any) =>
         String(item.response ?? ""),
       ),
+      percentiles: {
+        accuracy: entry.judge_feedback?.accuracy_percentile ?? null,
+        token: entry.judge_feedback?.token_percentile ?? null,
+        combined: entry.judge_feedback?.combined_percentile ?? null,
+      },
+      ratingChange: response.rating_change ?? null,
     });
   }
 
@@ -209,6 +221,16 @@ export function ChallengeWorkbench({
           <p className="mt-3 max-w-3xl text-sm text-[#94a3b8]">
             {challenge.description}
           </p>
+          {(challenge as any).instructions ? (
+            <div className="mt-4 max-w-3xl rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-4">
+              <div className="mb-2 text-[11px] uppercase tracking-[2px] text-[#a78bfa]">
+                Instructions
+              </div>
+              <p className="text-sm leading-7 text-[#cbd5e1]">
+                {String((challenge as any).instructions)}
+              </p>
+            </div>
+          ) : null}
         </div>
         <ModelSelector value={model} onChange={setModel} disabled={submitting || disabled} />
       </div>
@@ -295,6 +317,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                percentiles={submission.percentiles}
+                ratingChange={submission.ratingChange}
                 onTryAgain={handleTryAgain}
                 nextHref={nextChallengeHref}
               />
@@ -339,6 +363,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                percentiles={submission.percentiles}
+                ratingChange={submission.ratingChange}
                 onTryAgain={handleTryAgain}
                 nextHref={nextChallengeHref}
               />
@@ -385,6 +411,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                percentiles={submission.percentiles}
+                ratingChange={submission.ratingChange}
                 onTryAgain={handleTryAgain}
                 nextHref={nextChallengeHref}
               />
@@ -424,6 +452,8 @@ export function ChallengeWorkbench({
               timeLabel={submission.timeLabel}
               combinedScore={submission.combinedScore}
               feedback={submission.feedback}
+              percentiles={submission.percentiles}
+              ratingChange={submission.ratingChange}
               onTryAgain={handleTryAgain}
               nextHref={nextChallengeHref}
             />
@@ -464,6 +494,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                percentiles={submission.percentiles}
+                ratingChange={submission.ratingChange}
                 onTryAgain={handleTryAgain}
                 nextHref={nextChallengeHref}
               />

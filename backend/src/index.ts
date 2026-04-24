@@ -10,6 +10,7 @@ import leaderboardRouter from "./routes/leaderboard";
 import contestsRouter from "./routes/contests";
 import testsRouter from "./routes/tests";
 import adminRouter from "./routes/admin";
+import profileRouter from "./routes/profile";
 
 const app = express();
 
@@ -64,6 +65,7 @@ app.use("/api/v1/leaderboard", leaderboardRouter);
 app.use("/api/v1/contests", contestsRouter);
 app.use("/api/v1/tests", testsRouter);
 app.use("/api/v1/admin", adminRouter);
+app.use("/api/v1/profile", profileRouter);
 
 app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error(error);
