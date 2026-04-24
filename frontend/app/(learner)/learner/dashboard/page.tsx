@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { ArrowRight, Flame, Sparkles } from "lucide-react";
 import { categoryLabels } from "@/lib/data/mock";
 import type { ChallengeRecord, ContestRecord } from "@shared/types";
 import { Card } from "@/components/ui/card";
@@ -111,28 +113,43 @@ export default function LearnerDashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="grid gap-4 xl:grid-cols-[1fr_340px]">
+      <div className="grid gap-4 xl:grid-cols-[1fr_360px]">
         <div>
-          <div className="text-sm uppercase tracking-[2px] text-[#64748b]">
+          <div className="inline-flex items-center gap-2 text-xs uppercase tracking-[2px] text-[#64748b]">
+            <Sparkles className="size-3.5 text-[#a78bfa]" />
             Dashboard
           </div>
-          <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
+          <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9] md:text-4xl">
             Welcome back, {auth.displayName}
           </h1>
-          <p className="mt-2 text-sm text-[#94a3b8]">Your vibe coding journey</p>
+          <p className="mt-2 text-sm text-[#94a3b8]">
+            Your vibe coding journey — keep the streak alive.
+          </p>
         </div>
         {contestBanner ? (
-          <Card className="rounded-2xl border border-[#7c3aed]/20 bg-gradient-to-r from-[#7c3aed]/10 to-transparent p-5">
-            <div className="text-xs uppercase tracking-[2px] text-[#c4b5fd]">
-              Contest Banner
+          <Card className="relative overflow-hidden rounded-2xl border border-[#7c3aed]/30 bg-gradient-to-br from-[#7c3aed]/15 via-[#111827] to-[#7c3aed]/5 p-5">
+            <div className="pointer-events-none absolute -right-10 -top-10 size-32 rounded-full bg-[#7c3aed]/20 blur-3xl" />
+            <div className="relative">
+              <div className="inline-flex size-9 items-center justify-center rounded-xl bg-[#f97316]/15">
+                <Flame className="size-4 text-[#fb923c]" />
+              </div>
+              <div className="mt-3 font-mono-ui text-base font-semibold text-[#f1f5f9]">
+                {contestBanner.title}
+              </div>
+              <div className="mt-1 text-xs uppercase tracking-[2px] text-[#64748b]">
+                Starts in
+              </div>
+              <CountdownTimer
+                targetDate={contestBanner.scheduled_at}
+                className="mt-1 font-mono-ui text-2xl font-bold text-[#a78bfa]"
+              />
+              <Link
+                href={`/learner/contests/${contestBanner.id}`}
+                className="mt-3 inline-flex items-center gap-1 text-xs font-mono-ui text-[#a78bfa] hover:text-[#c4b5fd]"
+              >
+                Join now <ArrowRight className="size-3" />
+              </Link>
             </div>
-            <div className="mt-3 font-mono-ui text-lg text-[#f1f5f9]">
-              {contestBanner.title}
-            </div>
-            <CountdownTimer
-              targetDate={contestBanner.scheduled_at}
-              className="mt-2 text-2xl font-mono-ui text-[#a78bfa]"
-            />
           </Card>
         ) : (
           <Card className="rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-5 text-sm text-[#94a3b8]">
