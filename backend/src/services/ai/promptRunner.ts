@@ -1,13 +1,17 @@
 import type { PromptExecutionResult } from "../../types";
-import { EXECUTION_MODEL, runPrompt } from "./openai";
+import { executionModelFor, runProviderPrompt, type Provider } from "./dispatch";
 
 export async function executeSpecToPrompt(params: {
   promptMode: "single" | "plan_act";
   userPrompts: string[];
+  provider?: Provider;
 }): Promise<PromptExecutionResult> {
+  const provider: Provider = params.provider ?? "openai";
+  const model = executionModelFor(provider);
+
   if (params.promptMode === "single") {
-    const result = await runPrompt({
-      model: EXECUTION_MODEL,
+    const result = await runProviderPrompt(provider, {
+      model,
       responseFormat: "json_object",
       systemPrompt: `You are an AI coding assistant. The user will describe what they want built.
 Generate the code based on their description.
@@ -30,8 +34,8 @@ Do not include anything outside this JSON.`,
     };
   }
 
-  const planResult = await runPrompt({
-    model: EXECUTION_MODEL,
+  const planResult = await runProviderPrompt(provider, {
+    model,
     responseFormat: "json_object",
     systemPrompt: `You are an AI coding assistant in PLANNING mode.
 The user will describe what they want. Create a detailed plan, not code.
@@ -46,8 +50,8 @@ IMPORTANT: You MUST respond in this EXACT JSON format:
     maxTokens: 1400,
   });
 
-  const actResult = await runPrompt({
-    model: EXECUTION_MODEL,
+  const actResult = await runProviderPrompt(provider, {
+    model,
     responseFormat: "json_object",
     systemPrompt: `You are an AI coding assistant in EXECUTION mode.
 You previously created this plan:
@@ -78,9 +82,9 @@ IMPORTANT: You MUST respond in this EXACT JSON format:
   };
 }
 
-export async function executeTokenGolfPrompt(prompt: string) {
-  const result = await runPrompt({
-    model: EXECUTION_MODEL,
+export async function executeTokenGolfPrompt(prompt: string, provider: Provider = "openai") {
+  const result = await runProviderPrompt(provider, {
+    model: executionModelFor(provider),
     responseFormat: "json_object",
     systemPrompt: `You are an AI coding assistant. Generate exactly what the user asks for.
 Be precise and follow their instructions exactly.
@@ -102,9 +106,9 @@ Do not include anything outside this JSON.`,
   };
 }
 
-export async function executeUIReproductionPrompt(prompt: string) {
-  const result = await runPrompt({
-    model: EXECUTION_MODEL,
+export async function executeUIReproductionPrompt(prompt: string, provider: Provider = "openai") {
+  const result = await runProviderPrompt(provider, {
+    model: executionModelFor(provider),
     systemPrompt: `You are a UI developer. Generate a single HTML file with inline CSS
 that reproduces the UI described by the user.
 

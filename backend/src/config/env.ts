@@ -13,6 +13,7 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   OPENAI_API_KEY: z.string().optional(),
   OPENAI_KEY: z.string().optional(),
+  ANTHROPIC_API_KEY: z.string().optional(),
   DATABASE_URL: z.string().optional(),
   PUPPETEER_EXECUTABLE_PATH: z.string().optional(),
 });
@@ -22,6 +23,7 @@ const parsed = envSchema.parse(process.env);
 export const env = {
   ...parsed,
   OPENAI_API_KEY: parsed.OPENAI_API_KEY ?? parsed.OPENAI_KEY ?? "",
+  ANTHROPIC_API_KEY: parsed.ANTHROPIC_API_KEY ?? "",
 };
 
 export const isProduction = env.NODE_ENV === "production";

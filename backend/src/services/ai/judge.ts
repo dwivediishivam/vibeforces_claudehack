@@ -1,5 +1,7 @@
 import type { JudgeResult } from "../../types";
 import { openai, JUDGE_MODEL, runPrompt } from "./openai";
+import { runAnthropicVisionJudge } from "./anthropic";
+import { judgeModelFor, runProviderPrompt, type Provider } from "./dispatch";
 import { safeJsonParse } from "../../utils/json";
 
 export async function judgeSpecToPrompt(params: {
@@ -7,9 +9,11 @@ export async function judgeSpecToPrompt(params: {
   rubric: string;
   userPrompts: string[];
   aiOutputs: string[];
+  provider?: Provider;
 }) {
-  const result = await runPrompt({
-    model: JUDGE_MODEL,
+  const provider: Provider = params.provider ?? "openai";
+  const result = await runProviderPrompt(provider, {
+    model: judgeModelFor(provider),
     responseFormat: "json_object",
     systemPrompt: `You are grading a prompt-engineering exercise. The primary signal is whether the AI OUTPUT matches the expected behavior. Prompt wording matters only insofar as it produced a correct output.
 
@@ -60,9 +64,11 @@ export async function judgeTokenGolf(params: {
   targetOutput: string;
   actualOutput: string;
   verificationPrompt: string;
+  provider?: Provider;
 }) {
-  const result = await runPrompt({
-    model: JUDGE_MODEL,
+  const provider: Provider = params.provider ?? "openai";
+  const result = await runProviderPrompt(provider, {
+    model: judgeModelFor(provider),
     responseFormat: "json_object",
     systemPrompt: `You are verifying whether AI-generated code matches a target specification. Judge on functional equivalence, not surface-level text similarity.
 ${params.verificationPrompt}
@@ -104,9 +110,11 @@ export async function judgeBugFix(params: {
   expectedFix: string;
   userPrompt: string;
   rubric: string;
+  provider?: Provider;
 }) {
-  const result = await runPrompt({
-    model: JUDGE_MODEL,
+  const provider: Provider = params.provider ?? "openai";
+  const result = await runProviderPrompt(provider, {
+    model: judgeModelFor(provider),
     responseFormat: "json_object",
     systemPrompt: `You are judging how precisely a user's prompt pinpointed a bug.
 
@@ -158,17 +166,10 @@ export async function judgeUIReproduction(params: {
   targetScreenshotBase64: string;
   generatedScreenshotBase64: string;
   rubric: string;
+  provider?: Provider;
 }) {
-  if (!openai) {
-    throw new Error("OpenAI is not configured.");
-  }
-
-  const response = await openai.chat.completions.create({
-    model: JUDGE_MODEL,
-    messages: [
-      {
-        role: "system",
-        content: `You are judging visual similarity between two UI screenshots: the first is the TARGET, the second is the USER'S REPRODUCTION.
+  const provider: Provider = params.provider ?? "openai";
+  const systemPrompt = `You are judging visual similarity between two UI screenshots: the first is the TARGET, the second is the USER'S REPRODUCTION.
 
 Score holistically. A recognizable reproduction of the same UI — same component structure, approximate colors, approximate layout — should score high even if pixel-level details differ. Web rendering is never pixel-perfect, and the judge should not punish expected variance.
 
@@ -193,8 +194,33 @@ Respond in this EXACT JSON format:
   "component_match": <number 0-10>,
   "overall_score": <number 0-10>,
   "feedback": "<2-3 sentences>"
-}`,
-      },
+}`;
+
+  const fallback = {
+    visual_similarity_percentage: 0,
+    overall_score: 0,
+    feedback: "Judge response was not parseable.",
+  };
+
+  if (provider === "anthropic") {
+    const result = await runAnthropicVisionJudge({
+      model: judgeModelFor(provider),
+      systemPrompt,
+      textPrompts: ["Target UI", "Generated UI"],
+      images: [params.targetScreenshotBase64, params.generatedScreenshotBase64],
+      maxTokens: 900,
+    });
+    return safeJsonParse<JudgeResult>(result.content, fallback);
+  }
+
+  if (!openai) {
+    throw new Error("OpenAI is not configured.");
+  }
+
+  const response = await openai.chat.completions.create({
+    model: JUDGE_MODEL,
+    messages: [
+      { role: "system", content: systemPrompt },
       {
         role: "user",
         content: [
@@ -221,10 +247,6 @@ Respond in this EXACT JSON format:
 
   return safeJsonParse<JudgeResult>(
     response.choices[0]?.message?.content ?? "",
-    {
-      visual_similarity_percentage: 0,
-      overall_score: 0,
-      feedback: "Judge response was not parseable.",
-    },
+    fallback,
   );
 }

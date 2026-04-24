@@ -12,7 +12,7 @@ import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import { DifficultyBadge } from "@/components/common/difficulty-badge";
 import { RatingBadge } from "@/components/common/rating-badge";
-import { ModelBadge } from "@/components/common/model-badge";
+import { ModelSelector } from "@/components/challenges/model-selector";
 import { VoicePlayer } from "@/components/challenges/voice-player";
 import { PromptEditor } from "@/components/challenges/prompt-editor";
 import { AIResponseDisplay } from "@/components/challenges/ai-response-display";
@@ -60,6 +60,7 @@ export function ChallengeWorkbench({
   const [activeTab, setActiveTab] = useState("plan");
   const [startedAt, setStartedAt] = useState(() => Date.now());
   const [resetKey, setResetKey] = useState(0);
+  const [model, setModel] = useState<"openai" | "anthropic">("openai");
 
   function handleTryAgain() {
     setSubmission(null);
@@ -119,6 +120,7 @@ export function ChallengeWorkbench({
           1,
           Math.round((Date.now() - startedAt) / 1000),
         ),
+        model,
       },
       token,
     )) as any;
@@ -207,7 +209,7 @@ export function ChallengeWorkbench({
             {challenge.description}
           </p>
         </div>
-        <ModelBadge />
+        <ModelSelector value={model} onChange={setModel} disabled={submitting || disabled} />
       </div>
 
       {challenge.category === "spec_to_prompt" ? (

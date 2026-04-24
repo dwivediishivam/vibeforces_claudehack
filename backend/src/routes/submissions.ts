@@ -29,6 +29,7 @@ import {
 } from "../services/scoring";
 import { htmlToBase64Screenshot, htmlToBase64ScreenshotSafe, fetchUrlToBase64 } from "../services/screenshot";
 import { env } from "../config/env";
+import { normalizeProvider } from "../services/ai/dispatch";
 import { estimateTokens } from "../services/ai/openai";
 
 const router = Router();
@@ -45,6 +46,7 @@ const submissionSchema = z.object({
   context_type: z.enum(["practice", "contest", "test"]).default("practice"),
   context_id: z.string().uuid().nullable().optional(),
   time_taken_seconds: z.number().int().nonnegative().default(0),
+  model: z.enum(["openai", "anthropic", "claude", "gpt"]).optional(),
 });
 
 router.use(requireAuth);
@@ -102,6 +104,7 @@ router.post(
     }
 
     const challenge = challengeData as ChallengeRow;
+    const provider = normalizeProvider(body.model);
     const prompts = body.prompts.map((item) => ({
       prompt: item.prompt,
       token_count: item.token_count ?? estimateTokens(item.prompt),
@@ -123,6 +126,7 @@ router.post(
       const execution = await executeSpecToPrompt({
         promptMode: challenge.challenge_data.prompt_mode,
         userPrompts: prompts.map((item) => item.prompt),
+        provider,
       });
 
       aiResponses = execution.responses.map((response) => ({
@@ -135,6 +139,7 @@ router.post(
         rubric: challenge.challenge_data.rubric,
         userPrompts: prompts.map((item) => item.prompt),
         aiOutputs: execution.responses.map((response) => response.content),
+        provider,
       });
 
       accuracyScore =
@@ -151,7 +156,7 @@ router.post(
         timeScore,
       });
     } else if (challenge.category === "token_golf") {
-      const execution = await executeTokenGolfPrompt(prompts[0]?.prompt ?? "");
+      const execution = await executeTokenGolfPrompt(prompts[0]?.prompt ?? "", provider);
       const parsed = ensureJsonObject<Record<string, any>>(execution.content, {
         code: execution.content,
       });
@@ -165,6 +170,7 @@ router.post(
         targetOutput: challenge.challenge_data.target_output,
         actualOutput: parsed.code ?? execution.content,
         verificationPrompt: challenge.challenge_data.verification_prompt,
+        provider,
       });
       accuracyScore =
         Number(judgeFeedback.correctness_percentage ?? 0) / 10;
@@ -185,6 +191,7 @@ router.post(
         expectedFix: challenge.challenge_data.expected_fix,
         userPrompt: prompts[0]?.prompt ?? "",
         rubric: challenge.challenge_data.rubric,
+        provider,
       });
       accuracyScore =
         Number(judgeFeedback.overall_score ?? judgeFeedback.precision_score ?? 0) ||
@@ -217,7 +224,7 @@ router.post(
         timeScore: 100,
       });
     } else if (challenge.category === "ui_reproduction") {
-      const execution = await executeUIReproductionPrompt(prompts[0]?.prompt ?? "");
+      const execution = await executeUIReproductionPrompt(prompts[0]?.prompt ?? "", provider);
       const targetPath = String(challenge.challenge_data.target_screenshot_url ?? "");
       const targetUrl = targetPath.startsWith("http")
         ? targetPath
@@ -237,6 +244,7 @@ router.post(
         return;
       }
       judgeFeedback = await judgeUIReproduction({
+        provider,
         targetScreenshotBase64,
         generatedScreenshotBase64,
         rubric: challenge.challenge_data.rubric,
