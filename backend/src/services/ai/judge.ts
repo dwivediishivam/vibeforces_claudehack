@@ -70,17 +70,23 @@ export async function judgeTokenGolf(params: {
   const result = await runProviderPrompt(provider, {
     model: judgeModelFor(provider),
     responseFormat: "json_object",
-    systemPrompt: `You are verifying whether AI-generated code matches a target specification. Judge on functional equivalence, not surface-level text similarity.
+    systemPrompt: `You judge whether the candidate's code is FUNCTIONALLY EQUIVALENT to the target spec. You are NOT comparing text. You are NOT comparing the code line-by-line to a reference. Mentally trace what each piece of code does on representative inputs and decide whether the observable behavior is the same.
+
 ${params.verificationPrompt}
 
-Calibration for correctness_percentage:
-- 100: Output is functionally equivalent to the target on all inputs.
-- 80-95: Output solves the task; minor edge-case or formatting mismatch.
-- 50-79: Output solves the common cases but misses a clear requirement.
-- 20-49: Output attempts the task but is broken for most inputs.
-- 0-19: Off-target, empty, or non-code.
+Concrete rules:
+- A one-line solution that produces the same outputs as the reference is fully correct (100). Length is irrelevant.
+- A trivial constant return (e.g. \`return -1\`) ONLY counts if the spec genuinely allows it for all inputs. Otherwise it fails on the inputs where it diverges.
+- Different algorithms / data structures with identical behavior are correct.
+- Stylistic differences (names, spacing, language idioms) are irrelevant.
+- Compare on the INPUTS the verification prompt or target description specifies. If unspecified, use a small set of representative inputs including edge cases (empty, single-element, large, negative).
 
-Do not punish stylistic differences (variable names, spacing). Reward any correct approach.
+Calibration for correctness_percentage:
+- 100: Equivalent behavior on every input you can think of.
+- 80-95: Equivalent on common inputs; one or two edge cases differ.
+- 50-79: Right on the common path but misses a clear requirement.
+- 20-49: Broken for most inputs.
+- 0-19: Off-target, empty, or non-code.
 
 Respond in this EXACT JSON format:
 {

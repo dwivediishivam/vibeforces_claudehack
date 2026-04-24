@@ -102,9 +102,35 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
+    async function refreshFromStorage() {
+      const {
+        data: { session: latest },
+      } = await client.auth.getSession();
+      if (!mounted) return;
+      setSession(latest);
+      setProfile(latest?.user ? await loadProfile(latest.user.id) : null);
+    }
+
+    function onVisibility() {
+      if (document.visibilityState === "visible") void refreshFromStorage();
+    }
+    function onFocus() {
+      void refreshFromStorage();
+    }
+    function onStorage(event: StorageEvent) {
+      if (event.key && event.key.includes("supabase")) void refreshFromStorage();
+    }
+
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("storage", onStorage);
+
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("storage", onStorage);
     };
   }, [supabase]);
 

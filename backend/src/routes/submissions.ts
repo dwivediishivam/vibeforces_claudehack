@@ -25,6 +25,7 @@ import {
   computeCombinedScore,
   computeTimeScore,
   computeTokenScore,
+  percentileScore,
   scoreArchitectureRanking,
 } from "../services/scoring";
 import { htmlToBase64Screenshot, htmlToBase64ScreenshotSafe, fetchUrlToBase64 } from "../services/screenshot";
@@ -64,6 +65,23 @@ router.get(
 
     if (error) throw error;
 
+    res.json({ submissions: data ?? [] });
+  }),
+);
+
+router.get(
+  "/by-challenge/:id",
+  asyncHandler(async (req: Request, res) => {
+    const { data, error } = await supabaseAdmin
+      .from("submissions")
+      .select("*")
+      .eq("user_id", req.auth!.userId)
+      .eq("challenge_id", String(req.params.id))
+      .eq("context_type", "practice")
+      .order("created_at", { ascending: false })
+      .limit(20);
+
+    if (error) throw error;
     res.json({ submissions: data ?? [] });
   }),
 );
@@ -271,6 +289,50 @@ router.post(
         },
       ];
       generatedScreenshotUrl = `data:image/png;base64,${generatedScreenshotBase64}`;
+    }
+
+    let tokenPercentile: number | null = null;
+    if (challenge.category !== "architecture_pick") {
+      const userTokens = prompts.reduce(
+        (total, item) => total + item.token_count,
+        0,
+      );
+      const { data: peerRows } = await supabaseAdmin
+        .from("submissions")
+        .select("prompts")
+        .eq("challenge_id", body.challenge_id)
+        .eq("context_type", "practice")
+        .eq("status", "completed")
+        .neq("user_id", req.auth!.userId)
+        .limit(500);
+
+      const peerTokens = (peerRows ?? [])
+        .map((row: any) =>
+          Array.isArray(row.prompts)
+            ? row.prompts.reduce(
+                (sum: number, p: any) => sum + Number(p?.token_count ?? 0),
+                0,
+              )
+            : 0,
+        )
+        .filter((value: number) => value > 0);
+
+      tokenPercentile = percentileScore(userTokens, peerTokens);
+      if (tokenPercentile !== null) {
+        tokenScore = Math.round(0.5 * tokenScore + 0.5 * tokenPercentile);
+        combinedScore = computeCombinedScore({
+          category: challenge.category,
+          accuracyRaw: accuracyScore,
+          tokenScore,
+          timeScore,
+        });
+      }
+    }
+    if (tokenPercentile !== null) {
+      judgeFeedback = {
+        ...judgeFeedback,
+        token_percentile: tokenPercentile,
+      } as Record<string, unknown>;
     }
 
     const { data: submission, error: submissionError } = await supabaseAdmin

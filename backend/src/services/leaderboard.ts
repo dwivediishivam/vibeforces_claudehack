@@ -14,6 +14,42 @@ export async function getPracticeLeaderboard() {
   }));
 }
 
+export async function getChallengeLeaderboard(challengeId: string, limit = 50) {
+  const { data, error } = await supabaseAdmin
+    .from("submissions")
+    .select(
+      "id, user_id, combined_score, accuracy_score, token_score, time_taken_seconds, created_at, profiles!submissions_user_id_fkey(username, display_name, avatar_url)",
+    )
+    .eq("challenge_id", challengeId)
+    .eq("context_type", "practice")
+    .eq("status", "completed")
+    .order("combined_score", { ascending: false })
+    .limit(limit);
+
+  if (error) throw error;
+
+  const seen = new Set<string>();
+  const dedup: any[] = [];
+  for (const entry of data ?? []) {
+    if (seen.has(entry.user_id)) continue;
+    seen.add(entry.user_id);
+    dedup.push(entry);
+  }
+
+  return dedup.map((entry: any, index) => ({
+    rank: index + 1,
+    user_id: entry.user_id,
+    username: entry.profiles?.username ?? "anonymous",
+    display_name: entry.profiles?.display_name ?? "Anonymous",
+    avatar_url: entry.profiles?.avatar_url ?? null,
+    combined_score: Number(entry.combined_score ?? 0),
+    accuracy_score: Number(entry.accuracy_score ?? 0),
+    token_score: Number(entry.token_score ?? 0),
+    time_taken_seconds: Number(entry.time_taken_seconds ?? 0),
+    submitted_at: entry.created_at,
+  }));
+}
+
 export async function getContestLeaderboard(contestId: string) {
   const { data, error } = await supabaseAdmin
     .from("contest_participants")

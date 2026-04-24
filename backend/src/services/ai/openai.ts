@@ -39,13 +39,10 @@ export async function runPrompt(params: {
     max_completion_tokens: params.maxTokens ?? 2048,
   });
 
+  const content = response.choices[0]?.message?.content ?? "";
   return {
-    content: response.choices[0]?.message?.content ?? "",
-    inputTokens:
-      response.usage?.prompt_tokens ??
-      estimateTokens(`${params.systemPrompt}\n${params.userPrompt}`),
-    outputTokens:
-      response.usage?.completion_tokens ??
-      estimateTokens(response.choices[0]?.message?.content ?? ""),
+    content,
+    inputTokens: estimateTokens(`${params.systemPrompt}\n${params.userPrompt}`),
+    outputTokens: estimateTokens(content),
   };
 }

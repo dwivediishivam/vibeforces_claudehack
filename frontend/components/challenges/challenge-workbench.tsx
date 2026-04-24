@@ -21,6 +21,7 @@ import { ArchitectureOptions } from "@/components/challenges/architecture-option
 import { ScreenshotViewer } from "@/components/challenges/screenshot-viewer";
 import { ScoreDisplay } from "@/components/challenges/score-display";
 import { ProctoringBanner } from "@/components/common/proctoring-banner";
+import { ChallengeInsights } from "@/components/challenges/challenge-insights";
 
 type SubmissionView = {
   accuracy: number;
@@ -306,11 +307,13 @@ export function ChallengeWorkbench({
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card className="surface-card rounded-2xl p-6">
             <div className="mb-4 font-mono-ui text-lg text-[#f1f5f9]">
-              Target Output
+              The task
             </div>
-            <CodeDisplay code={String(data.target_output)} language="python" />
-            <div className="mt-4 text-sm text-[#94a3b8]">
+            <div className="text-sm leading-7 text-[#cbd5e1]">
               {String(data.target_description)}
+            </div>
+            <div className="mt-4 rounded-xl border border-[#1e293b] bg-[#0a0f1e] p-3 text-xs text-[#94a3b8]">
+              Token budget: <span className="font-mono-ui text-[#a78bfa]">{String(data.max_tokens_allowed)}</span>. Write a prompt that produces the described output. The reference implementation is hidden — your prompt is judged on whether the AI's output is functionally equivalent to it.
             </div>
           </Card>
           <div className="space-y-6">
@@ -467,6 +470,10 @@ export function ChallengeWorkbench({
             ) : null}
           </div>
         </div>
+      ) : null}
+
+      {contextType === "practice" ? (
+        <ChallengeInsights challengeId={challenge.id} refreshKey={resetKey} />
       ) : null}
 
       {showProctoring ? <ProctoringBanner /> : null}

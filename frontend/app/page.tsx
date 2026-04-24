@@ -14,6 +14,7 @@ import { Card } from "@/components/ui/card";
 import { Logo } from "@/components/layout/logo";
 import { CountdownTimer } from "@/components/common/countdown-timer";
 import { CodeAnimation } from "@/components/landing/code-animation";
+import { HeaderAuthCta, HeroAuthCta } from "@/components/landing/auth-cta";
 import { apiClient } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -59,17 +60,17 @@ const steps = [
   {
     n: "01",
     title: "Pick a challenge",
-    body: "Choose a mode and difficulty. Each challenge is a real task an AI engineer handles on the job.",
+    body: "Five modes, three difficulties. Each one is a small task pulled from real day-to-day AI engineering work.",
   },
   {
     n: "02",
-    title: "Write your prompt",
-    body: "You write the prompt. A frontier model runs it. The solution is exactly what your prompt produced — no hand-edits.",
+    title: "Write a prompt",
+    body: "You write the prompt. A frontier model runs it and returns an answer. No hand-editing — your prompt is what gets graded.",
   },
   {
     n: "03",
-    title: "Get ranked",
-    body: "An LLM-as-judge grades accuracy. Token usage and time roll into a single rating on the global leaderboard.",
+    title: "Get a rating",
+    body: "Another AI scores accuracy, token efficiency, and speed. Scores roll into a Codeforces-style rating on the global leaderboard.",
   },
 ];
 
@@ -91,26 +92,7 @@ export default async function HomePage() {
       <header className="sticky top-0 z-50 border-b border-[#1e293b]/60 bg-[#030712]/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8">
           <Logo />
-          <div className="flex items-center gap-2">
-            <Link
-              href="/login"
-              className={cn(
-                buttonVariants({ variant: "ghost" }),
-                "text-[#cbd5e1] hover:text-white",
-              )}
-            >
-              Log in
-            </Link>
-            <Link
-              href="/signup"
-              className={cn(
-                buttonVariants({ variant: "default" }),
-                "bg-[#7c3aed] shadow-[0_0_24px_rgba(124,58,237,0.35)] hover:bg-[#6d28d9]",
-              )}
-            >
-              Sign up
-            </Link>
-          </div>
+          <HeaderAuthCta />
         </div>
       </header>
 
@@ -129,8 +111,9 @@ export default async function HomePage() {
             <div className="inline-flex items-center gap-2 rounded-full border border-[#334155]/70 bg-[#0a0f1e]/70 px-4 py-1.5 text-xs font-mono-ui text-[#94a3b8] backdrop-blur-md">
               <Sparkles className="size-3.5 text-[#a78bfa]" />
               <span>
-                <span className="text-[#a78bfa]">Season 1</span>
-                {nextContest ? ` — next arena: ${nextContest.title}` : " — launch catalog is live"}
+                {nextContest
+                  ? <>Next live contest — <span className="text-[#a78bfa]">{nextContest.title}</span></>
+                  : <>Now in open beta — <span className="text-[#a78bfa]">free to practice</span></>}
               </span>
             </div>
 
@@ -138,25 +121,17 @@ export default async function HomePage() {
               VibeForces
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-xl font-semibold text-[#f1f5f9] md:text-2xl">
-              LeetCode for Vibecoders.
+              LeetCode for the AI-coding era.
             </p>
             <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#94a3b8]">
-              The skill that ships software today is directing AI — not typing
-              it. Practice, rank, and prove that skill, judged by AI on real
-              prompt-engineering tasks.
+              In 2026, shipping software is mostly directing AI well. VibeForces
+              gives you short, judged challenges — write a prompt, an AI runs it,
+              another AI scores the result — so you can practice, get rated, and
+              show recruiters what you can actually do.
             </p>
 
             <div className="mt-10 flex flex-wrap justify-center gap-3">
-              <Link
-                href="/signup"
-                className={cn(
-                  buttonVariants({ size: "lg" }),
-                  "bg-[#7c3aed] px-8 shadow-[0_0_40px_rgba(124,58,237,0.35)] hover:bg-[#6d28d9]",
-                )}
-              >
-                Start practicing
-                <ArrowRight className="ml-2 size-4" />
-              </Link>
+              <HeroAuthCta />
               <Link
                 href="/learner/challenges"
                 className={cn(
@@ -178,11 +153,13 @@ export default async function HomePage() {
                 Challenge modes
               </div>
               <h2 className="mt-4 text-3xl font-bold font-mono-ui text-[#f1f5f9] md:text-4xl">
-                Five ways to prove you can guide AI under pressure.
+                Five kinds of challenges.
               </h2>
               <p className="mt-4 text-base leading-relaxed text-[#94a3b8]">
-                Each mode targets a distinct skill recruiters care about — from
-                listening, to precision, to judgment.
+                Each mode trains a different muscle that you&apos;d use on the
+                job — listening to a spec, hitting the answer with the fewest
+                tokens, debugging, judging trade-offs, and rebuilding UI from a
+                screenshot.
               </p>
             </div>
             <div className="mt-14 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -256,8 +233,12 @@ export default async function HomePage() {
                 How it works
               </div>
               <h2 className="mt-4 text-3xl font-bold font-mono-ui text-[#f1f5f9] md:text-4xl">
-                Three steps. One rating.
+                How a round works.
               </h2>
+              <p className="mt-4 text-base leading-relaxed text-[#94a3b8]">
+                No setup, no install. Sign up, pick a challenge, and you&apos;re
+                writing your first prompt in under a minute.
+              </p>
             </div>
             <div className="mt-14 grid gap-8 md:grid-cols-3">
               {steps.map((step) => (
@@ -288,14 +269,15 @@ export default async function HomePage() {
                     For recruiters
                   </div>
                   <h2 className="mt-3 text-2xl font-bold font-mono-ui text-[#f1f5f9] md:text-3xl">
-                    Hire developers who can actually ship in 2026.
+                    Hire for the skill that actually ships.
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-[#94a3b8] md:text-base">
-                    LeetCode measured whether a candidate could hand-write
-                    algorithms. That is not the job anymore. Send candidates a
-                    VibeForces test and see, in one sitting, whether they can
-                    direct AI to correct, efficient output under real
-                    constraints — with a full rubric you can review.
+                    Hand-written algorithm puzzles don&apos;t reflect modern
+                    engineering. Pick a few VibeForces challenges, set a time
+                    limit, and send candidates a single link. You get back
+                    accuracy, token efficiency, time, and the actual prompts
+                    they wrote — so you can see how someone really thinks with
+                    AI, not just whether they can memorise patterns.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 md:items-end">
@@ -373,11 +355,11 @@ export default async function HomePage() {
         <section className="px-4 py-24 lg:px-8">
           <div className="mx-auto max-w-3xl text-center">
             <h2 className="text-3xl font-bold font-mono-ui text-[#f1f5f9] md:text-5xl">
-              Ready to train your instincts?
+              Start with one challenge.
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[#94a3b8]">
-              Free to start. Pick a challenge, write a prompt, get a rating.
-              Your first attempt takes under ten minutes.
+              Free, no card. Sign up, pick any challenge, and you&apos;ll have a
+              real rating on the board in about ten minutes.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link

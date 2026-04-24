@@ -62,7 +62,9 @@ export default function LoginPage() {
       <h1 className="text-2xl font-bold font-mono-ui text-[#f1f5f9]">
         Welcome back
       </h1>
-      <p className="mt-2 text-sm text-[#94a3b8]">Sign in to your account</p>
+      <p className="mt-2 text-sm text-[#94a3b8]">
+        Pick up where you left off — your rating, submissions, and contests are waiting.
+      </p>
       <form className="mt-8 space-y-5" onSubmit={handleSubmit}>
         <div className="space-y-2">
           <Label htmlFor="email">Email</Label>

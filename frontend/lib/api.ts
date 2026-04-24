@@ -83,6 +83,28 @@ export const apiClient = {
   getPracticeLeaderboard() {
     return request<{ leaderboard: LeaderboardEntry[] }>("/leaderboard/practice");
   },
+  getChallengeLeaderboard(id: string) {
+    return request<{
+      leaderboard: Array<{
+        rank: number;
+        user_id: string;
+        username: string;
+        display_name: string;
+        avatar_url: string | null;
+        combined_score: number;
+        accuracy_score: number;
+        token_score: number;
+        time_taken_seconds: number;
+        submitted_at: string;
+      }>;
+    }>(`/leaderboard/challenge/${id}`);
+  },
+  getChallengeSubmissions(id: string, token?: string | null) {
+    return request<{ submissions: SubmissionRecord[] }>(
+      `/submissions/by-challenge/${id}`,
+      { token },
+    );
+  },
   getContests() {
     return request<{ contests: ContestRecord[] }>("/contests");
   },

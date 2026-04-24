@@ -55,6 +55,14 @@ export function computeCombinedScore(params: {
   );
 }
 
+export function percentileScore(value: number, peerValues: number[]) {
+  if (peerValues.length === 0) return null;
+  const lower = peerValues.filter((peer) => peer > value).length;
+  const equal = peerValues.filter((peer) => peer === value).length;
+  const pct = ((lower + equal * 0.5) / peerValues.length) * 100;
+  return Math.round(Math.max(0, Math.min(100, pct)));
+}
+
 export function scoreArchitectureRanking(
   ranking: string[],
   correctRanking: string[],

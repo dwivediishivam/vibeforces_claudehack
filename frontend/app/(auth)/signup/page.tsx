@@ -14,13 +14,13 @@ import { useAuth } from "@/hooks/useAuth";
 const roles = [
   {
     value: "learner" as const,
-    title: "I’m a Learner",
-    subtitle: "Train & compete",
+    title: "I want to practice",
+    subtitle: "Solve challenges, climb the rating leaderboard",
   },
   {
     value: "recruiter" as const,
-    title: "I’m a Recruiter",
-    subtitle: "Test candidates",
+    title: "I want to hire",
+    subtitle: "Send candidates a timed AI-coding test",
   },
 ];
 
@@ -91,6 +91,9 @@ export default function SignupPage() {
       <h1 className="text-2xl font-bold font-mono-ui text-[#f1f5f9]">
         Create your account
       </h1>
+      <p className="mt-2 text-sm text-[#94a3b8]">
+        Free, takes about thirty seconds. Pick how you want to use VibeForces — you can change it later.
+      </p>
       <div className="mt-6 grid grid-cols-2 gap-3">
         {roles.map((item) => (
           <button

@@ -41,8 +41,8 @@ export async function runAnthropicPrompt(params: {
 
   return {
     content: cleaned,
-    inputTokens: response.usage.input_tokens ?? estimateTokens(`${params.systemPrompt}\n${userContent}`),
-    outputTokens: response.usage.output_tokens ?? estimateTokens(text),
+    inputTokens: estimateTokens(`${params.systemPrompt}\n${userContent}`),
+    outputTokens: estimateTokens(text),
   };
 }
 
