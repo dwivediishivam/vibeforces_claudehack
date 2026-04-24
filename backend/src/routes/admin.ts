@@ -22,7 +22,8 @@ router.get(
           .select("*", { count: "exact", head: true }),
         supabaseAdmin
           .from("contests")
-          .select("*", { count: "exact", head: true }),
+          .select("*", { count: "exact", head: true })
+          .in("status", ["upcoming", "active"]),
       ]);
 
     res.json({

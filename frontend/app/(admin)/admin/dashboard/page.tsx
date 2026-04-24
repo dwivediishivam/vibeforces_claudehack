@@ -1,18 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ShieldCheck } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/common/stat-card";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import { EmptyState } from "@/components/common/empty-state";
 
 export default function AdminDashboardPage() {
   const auth = useAuth();
   const [stats, setStats] = useState({
-    total_users: 17,
-    total_submissions: 248,
-    active_contests: 1,
+    total_users: 0,
+    total_submissions: 0,
+    active_contests: 0,
   });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -22,9 +25,18 @@ export default function AdminDashboardPage() {
       .then((response) => {
         if (!cancelled) {
           setStats(response.stats);
+          setError(null);
         }
       })
-      .catch(() => {});
+      .catch((nextError) => {
+        if (!cancelled) {
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Admin stats could not be loaded.",
+          );
+        }
+      });
 
     return () => {
       cancelled = true;
@@ -42,10 +54,17 @@ export default function AdminDashboardPage() {
         </h1>
       </div>
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Total Users" value={String(stats.total_users)} change="+seeded users" />
-        <StatCard label="Submissions" value={String(stats.total_submissions)} change="+live attempts" accent="green" />
-        <StatCard label="Active Contests" value={String(stats.active_contests)} change="Launch contest" accent="amber" />
+        <StatCard label="Total Users" value={String(stats.total_users)} />
+        <StatCard label="Submissions" value={String(stats.total_submissions)} accent="green" />
+        <StatCard label="Active Contests" value={String(stats.active_contests)} accent="amber" />
       </div>
+      {error ? (
+        <EmptyState
+          icon={<ShieldCheck className="size-12" />}
+          title="Admin stats unavailable"
+          description={error}
+        />
+      ) : null}
       <Card className="surface-card rounded-2xl p-6">
         <div className="text-lg font-semibold font-mono-ui text-[#f1f5f9]">
           Quick Links

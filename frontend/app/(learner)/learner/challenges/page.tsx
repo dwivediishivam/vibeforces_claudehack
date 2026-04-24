@@ -2,17 +2,21 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Search } from "lucide-react";
-import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
+import { ChevronRight, Search, Swords } from "lucide-react";
+import { categoryLabels } from "@/lib/data/mock";
 import { apiClient } from "@/lib/api";
 import { DifficultyBadge } from "@/components/common/difficulty-badge";
 import { RatingBadge } from "@/components/common/rating-badge";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import { EmptyState } from "@/components/common/empty-state";
+import type { ChallengeRecord } from "@shared/types";
 
 export default function ChallengesPage() {
-  const [challenges, setChallenges] = useState(challengeSummaryCards);
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [category, setCategory] = useState<string>("all");
   const [difficulty, setDifficulty] = useState<string>("all");
   const [search, setSearch] = useState("");
@@ -25,11 +29,21 @@ export default function ChallengesPage() {
       .then((response) => {
         if (!cancelled) {
           setChallenges(response.challenges);
+          setError(null);
         }
       })
-      .catch(() => {
+      .catch((nextError) => {
         if (!cancelled) {
-          setChallenges(challengeSummaryCards);
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Challenges could not be loaded.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoading(false);
         }
       });
 
@@ -51,17 +65,38 @@ export default function ChallengesPage() {
     });
   }, [category, challenges, difficulty, search]);
 
+  const challengeCountLabel = loading
+    ? "Loading challenge catalog"
+    : error
+      ? "Challenge catalog unavailable"
+      : `${challenges.length} challenges across 5 categories`;
+
   return (
     <div className="space-y-6">
       <div>
         <div className="text-sm uppercase tracking-[2px] text-[#64748b]">
           Challenges
         </div>
-          <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
-          {challenges.length} challenges across 5 categories
-          </h1>
+        <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
+          {challengeCountLabel}
+        </h1>
       </div>
 
+      {loading ? (
+        <Card className="surface-card rounded-2xl p-10 text-center text-sm text-[#94a3b8]">
+          Loading challenge catalog...
+        </Card>
+      ) : null}
+
+      {!loading && error ? (
+        <EmptyState
+          icon={<Swords className="size-12" />}
+          title="Challenge catalog unavailable"
+          description={error}
+        />
+      ) : null}
+
+      {!loading && !error ? (
       <div className="grid gap-6 lg:grid-cols-[220px_1fr]">
         <Card className="surface-card rounded-2xl p-4">
           <div className="text-xs uppercase tracking-[2px] text-[#64748b]">
@@ -126,6 +161,13 @@ export default function ChallengesPage() {
               className="h-12 rounded-2xl border-[#1e293b] bg-[#0a0f1e] pl-11"
             />
           </div>
+          {filtered.length === 0 ? (
+            <EmptyState
+              icon={<Swords className="size-12" />}
+              title="No challenges match these filters"
+              description="Try a broader category, difficulty, or search query."
+            />
+          ) : null}
           {filtered.map((challenge) => (
             <Link
               key={challenge.id}
@@ -156,6 +198,7 @@ export default function ChallengesPage() {
           ))}
         </div>
       </div>
+      ) : null}
     </div>
   );
 }

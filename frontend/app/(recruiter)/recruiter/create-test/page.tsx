@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
-import { challengeSummaryCards, categoryLabels } from "@/lib/data/mock";
+import { categoryLabels } from "@/lib/data/mock";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -11,10 +11,11 @@ import { DifficultyBadge } from "@/components/common/difficulty-badge";
 import { ProctoringBanner } from "@/components/common/proctoring-banner";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
+import type { ChallengeRecord } from "@shared/types";
 
 export default function CreateTestPage() {
   const auth = useAuth();
-  const [catalog, setCatalog] = useState(challengeSummaryCards);
+  const [catalog, setCatalog] = useState<ChallengeRecord[]>([]);
   const [title, setTitle] = useState("Frontend Developer Assessment");
   const [description, setDescription] = useState(
     "A balanced screening set focused on prompt quality, debugging, and UI instincts.",
@@ -25,6 +26,8 @@ export default function CreateTestPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [createdLink, setCreatedLink] = useState("");
   const [creating, setCreating] = useState(false);
+  const [loadingCatalog, setLoadingCatalog] = useState(true);
+  const [catalogError, setCatalogError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,11 +37,19 @@ export default function CreateTestPage() {
       .then((response) => {
         if (!cancelled) {
           setCatalog(response.challenges);
+          setCatalogError(null);
         }
       })
-      .catch(() => {
+      .catch((error) => {
         if (!cancelled) {
-          setCatalog(challengeSummaryCards);
+          setCatalogError(
+            error instanceof Error ? error.message : "Challenge catalog unavailable.",
+          );
+        }
+      })
+      .finally(() => {
+        if (!cancelled) {
+          setLoadingCatalog(false);
         }
       });
 
@@ -130,30 +141,44 @@ export default function CreateTestPage() {
                 Available ({available.length})
               </div>
               <div className="mt-3 space-y-2">
-                {available.map((challenge) => (
-                  <button
-                    key={challenge.id}
-                    type="button"
-                    className="flex w-full items-center justify-between rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-3 text-left"
-                    onClick={() =>
-                      setSelectedIds((current) =>
-                        current.includes(challenge.id)
-                          ? current.filter((id) => id !== challenge.id)
-                          : [...current, challenge.id],
-                      )
-                    }
-                  >
-                    <div>
-                      <div className="font-mono-ui text-sm text-[#f1f5f9]">
-                        {challenge.title}
+                {loadingCatalog ? (
+                  <div className="rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-6 text-sm text-[#94a3b8]">
+                    Loading challenge catalog...
+                  </div>
+                ) : catalogError ? (
+                  <div className="rounded-xl border border-[#7f1d1d] bg-[#450a0a]/30 px-3 py-6 text-sm text-[#fca5a5]">
+                    {catalogError}
+                  </div>
+                ) : available.length === 0 ? (
+                  <div className="rounded-xl border border-dashed border-[#334155] px-3 py-6 text-sm text-[#64748b]">
+                    No challenges match this filter.
+                  </div>
+                ) : (
+                  available.map((challenge) => (
+                    <button
+                      key={challenge.id}
+                      type="button"
+                      className="flex w-full items-center justify-between rounded-xl border border-[#1e293b] bg-[#111827] px-3 py-3 text-left"
+                      onClick={() =>
+                        setSelectedIds((current) =>
+                          current.includes(challenge.id)
+                            ? current.filter((id) => id !== challenge.id)
+                            : [...current, challenge.id],
+                        )
+                      }
+                    >
+                      <div>
+                        <div className="font-mono-ui text-sm text-[#f1f5f9]">
+                          {challenge.title}
+                        </div>
+                        <div className="mt-1 text-xs text-[#64748b]">
+                          {categoryLabels[challenge.category]}
+                        </div>
                       </div>
-                      <div className="mt-1 text-xs text-[#64748b]">
-                        {categoryLabels[challenge.category]}
-                      </div>
-                    </div>
-                    <DifficultyBadge difficulty={challenge.difficulty} />
-                  </button>
-                ))}
+                      <DifficultyBadge difficulty={challenge.difficulty} />
+                    </button>
+                  ))
+                )}
               </div>
             </Card>
           </div>
@@ -232,8 +257,7 @@ export default function CreateTestPage() {
                   };
                 };
 
-                const appUrl =
-                  process.env.NEXT_PUBLIC_APP_URL ?? window.location.origin;
+                const appUrl = window.location.origin;
                 setCreatedLink(`${appUrl.replace(/\/$/, "")}/test/${response.test.share_code}`);
                 toast.success("Recruiter test created.");
               } catch (error) {

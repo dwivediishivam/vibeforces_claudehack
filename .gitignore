@@ -16,3 +16,4 @@ frontend/node_modules
 backend/dist
 frontend/.next
 frontend/out
+.vercel

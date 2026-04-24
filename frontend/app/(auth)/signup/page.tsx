@@ -33,13 +33,27 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSubmitting(true);
 
     try {
-      await auth.signUp({ email, password, username, displayName, role });
+      const result = await auth.signUp({
+        email,
+        password,
+        username,
+        displayName,
+        role,
+      });
+
+      if (result.requiresEmailConfirmation) {
+        setConfirmationEmail(result.email);
+        toast.success("Check your inbox to confirm the account, then sign in.");
+        return;
+      }
+
       toast.success("Account created.");
       router.push(role === "recruiter" ? "/recruiter/dashboard" : "/learner/dashboard");
     } catch (error) {
@@ -49,6 +63,27 @@ export default function SignupPage() {
     } finally {
       setSubmitting(false);
     }
+  }
+
+  if (confirmationEmail) {
+    return (
+      <Card className="surface-card rounded-[24px] p-8">
+        <h1 className="text-2xl font-bold font-mono-ui text-[#f1f5f9]">
+          Confirm your email
+        </h1>
+        <p className="mt-3 text-sm leading-6 text-[#94a3b8]">
+          We sent a confirmation link to <span className="text-[#f1f5f9]">{confirmationEmail}</span>.
+          Open that email, confirm the account, and then sign in here.
+        </p>
+        <Button
+          type="button"
+          className="mt-6 h-12 w-full bg-[#7c3aed] hover:bg-[#6d28d9]"
+          onClick={() => router.push("/login")}
+        >
+          Go to Login
+        </Button>
+      </Card>
+    );
   }
 
   return (

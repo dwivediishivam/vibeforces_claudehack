@@ -36,11 +36,17 @@ export function ChallengeWorkbench({
   contextType = "practice",
   contextId,
   showProctoring = false,
+  disabled = false,
+  lockedReason,
+  onSubmissionComplete,
 }: {
   challenge: ChallengeRecord;
   contextType?: "practice" | "contest" | "test";
   contextId?: string;
   showProctoring?: boolean;
+  disabled?: boolean;
+  lockedReason?: string;
+  onSubmissionComplete?: (submission: Record<string, unknown>) => void;
 }) {
   const auth = useAuth();
   const [singlePrompt, setSinglePrompt] = useState("");
@@ -104,6 +110,7 @@ export function ChallengeWorkbench({
     )) as any;
 
     const entry = response.submission as any;
+    onSubmissionComplete?.(entry);
     setSubmission({
       accuracy: Number(entry.accuracy_score ?? 0),
       tokenScore: Number(entry.token_score ?? 0),
@@ -122,6 +129,11 @@ export function ChallengeWorkbench({
   const data = challenge.challenge_data as any;
 
   async function handleSubmit() {
+    if (disabled) {
+      toast.error(lockedReason ?? "This challenge is currently locked.");
+      return;
+    }
+
     if (
       challenge.category === "architecture_pick" &&
       Object.keys(ranking).length !== 3
@@ -208,6 +220,7 @@ export function ChallengeWorkbench({
                     label="Write Your Plan Prompt"
                     initialValue={planPrompt}
                     submitLabel="Lock Plan"
+                    disabled={disabled}
                     onSubmit={(value) => {
                       setPlanPrompt(value);
                       setActiveTab("act");
@@ -220,6 +233,7 @@ export function ChallengeWorkbench({
                     label="Write Your Act Prompt"
                     initialValue={actPrompt}
                     submitLabel={submitting ? "Evaluating..." : "Submit Final Prompt"}
+                    disabled={disabled}
                     onSubmit={(value) => {
                       setActPrompt(value);
                       void handleSubmit();
@@ -232,6 +246,7 @@ export function ChallengeWorkbench({
                 label="Write Your Prompt"
                 initialValue={singlePrompt}
                 submitLabel={submitting ? "Evaluating..." : "Submit Prompt"}
+                disabled={disabled}
                 onSubmit={(value) => {
                   setSinglePrompt(value);
                   void handleSubmit();
@@ -272,6 +287,7 @@ export function ChallengeWorkbench({
               initialValue={singlePrompt}
               submitLabel={submitting ? "Evaluating..." : "Submit"}
               placeholder={`Max Tokens: ${String(data.max_tokens_allowed)}`}
+              disabled={disabled}
               onSubmit={(value) => {
                 setSinglePrompt(value);
                 void handleSubmit();
@@ -314,13 +330,14 @@ export function ChallengeWorkbench({
               initialValue={singlePrompt}
               submitLabel={submitting ? "Evaluating..." : "Submit Fix"}
               placeholder='Be specific. "Fix this" scores zero. Tell the AI exactly what is wrong and where.'
+              disabled={disabled}
               onSubmit={(value) => {
                 setSinglePrompt(value);
                 void handleSubmit();
               }}
             />
             <div className="rounded-xl bg-[#1e293b] px-3 py-2 text-xs font-mono-ui text-[#94a3b8]">
-              Future: Token count &amp; AI time will also be scored
+              Precision matters most here. Time and token efficiency are scored live.
             </div>
             {submission ? (
               <ScoreDisplay
@@ -353,7 +370,7 @@ export function ChallengeWorkbench({
           <div className="flex justify-end">
             <Button
               className="bg-[#7c3aed] hover:bg-[#6d28d9]"
-              disabled={submitting}
+              disabled={submitting || disabled}
               onClick={() => void handleSubmit()}
             >
               {submitting ? "Evaluating..." : "Submit Ranking"}
@@ -387,6 +404,7 @@ export function ChallengeWorkbench({
               label="Write Your Prompt"
               initialValue={singlePrompt}
               submitLabel={submitting ? "Evaluating..." : "Submit Prompt"}
+              disabled={disabled}
               onSubmit={(value) => {
                 setSinglePrompt(value);
                 void handleSubmit();
@@ -409,6 +427,11 @@ export function ChallengeWorkbench({
       ) : null}
 
       {showProctoring ? <ProctoringBanner /> : null}
+      {disabled && lockedReason ? (
+        <Card className="rounded-2xl border border-[#7c3aed]/25 bg-[#7c3aed]/10 p-4 text-sm text-[#ddd6fe]">
+          {lockedReason}
+        </Card>
+      ) : null}
     </div>
   );
 }

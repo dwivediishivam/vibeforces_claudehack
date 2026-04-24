@@ -36,7 +36,7 @@ export async function runPrompt(params: {
       params.responseFormat === "json_object"
         ? { type: "json_object" }
         : undefined,
-    max_tokens: params.maxTokens ?? 2048,
+    max_completion_tokens: params.maxTokens ?? 2048,
   });
 
   return {

@@ -1,20 +1,26 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
+import { BriefcaseBusiness } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { StatCard } from "@/components/common/stat-card";
-import { mockRecruiterStats } from "@/lib/data/mock";
-import { sampleRecruiterTests } from "@shared/seed-data";
 import { cn } from "@/lib/utils";
 import { apiClient } from "@/lib/api";
 import { useAuth } from "@/hooks/useAuth";
 import type { RecruiterTestRecord } from "@shared/types";
+import { EmptyState } from "@/components/common/empty-state";
 
 export default function RecruiterDashboardPage() {
   const auth = useAuth();
-  const [tests, setTests] = useState<RecruiterTestRecord[]>(sampleRecruiterTests);
+  const [tests, setTests] = useState<RecruiterTestRecord[]>([]);
+  const [stats, setStats] = useState({
+    candidates_tested: 0,
+    completed_attempts: 0,
+    avg_score: 0,
+  });
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -24,11 +30,17 @@ export default function RecruiterDashboardPage() {
       .then((response) => {
         if (!cancelled) {
           setTests(response.tests);
+          setStats(response.stats);
+          setError(null);
         }
       })
-      .catch(() => {
+      .catch((nextError) => {
         if (!cancelled) {
-          setTests(sampleRecruiterTests);
+          setError(
+            nextError instanceof Error
+              ? nextError.message
+              : "Recruiter tests could not be loaded.",
+          );
         }
       });
 
@@ -36,14 +48,6 @@ export default function RecruiterDashboardPage() {
       cancelled = true;
     };
   }, [auth.session?.access_token]);
-
-  const stats = useMemo(() => {
-    return {
-      testsCreated: tests.length,
-      candidatesTested: mockRecruiterStats.candidatesTested,
-      avgScore: mockRecruiterStats.avgScore,
-    };
-  }, [tests]);
 
   return (
     <div className="space-y-8">
@@ -68,9 +72,17 @@ export default function RecruiterDashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <StatCard label="Tests Created" value={String(stats.testsCreated)} change="+1 this week" />
-        <StatCard label="Candidates Tested" value={String(stats.candidatesTested)} change="+4 this week" accent="green" />
-        <StatCard label="Avg Score" value={stats.avgScore.toFixed(1)} change="+0.3" accent="amber" />
+        <StatCard label="Tests Created" value={String(tests.length)} />
+        <StatCard
+          label="Candidates Tested"
+          value={String(stats.candidates_tested)}
+          accent="green"
+        />
+        <StatCard
+          label="Avg Score"
+          value={stats.avg_score.toFixed(1)}
+          accent="amber"
+        />
       </div>
 
       <Card className="surface-card rounded-2xl p-6">
@@ -78,23 +90,35 @@ export default function RecruiterDashboardPage() {
           Your Tests
         </div>
         <div className="mt-4 space-y-3">
-          {tests.map((test) => (
-            <Link
-              key={test.id}
-              href={`/recruiter/tests/${test.id}`}
-              className="flex items-center justify-between rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-4 transition hover:border-[#334155]"
-            >
-              <div>
-                <div className="font-mono-ui text-[#f1f5f9]">{test.title}</div>
-                <div className="mt-1 text-sm text-[#94a3b8]">
-                  {test.challenge_ids.length} challenges · {test.time_limit_minutes} min
+          {error ? (
+            <EmptyState
+              icon={<BriefcaseBusiness className="size-12" />}
+              title="Recruiter dashboard unavailable"
+              description={error}
+            />
+          ) : tests.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-[#334155] bg-[#0a0f1e] p-6 text-sm text-[#64748b]">
+              No recruiter tests yet. Create one to start collecting live candidate scores.
+            </div>
+          ) : (
+            tests.map((test) => (
+              <Link
+                key={test.id}
+                href={`/recruiter/tests/${test.id}`}
+                className="flex items-center justify-between rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-4 transition hover:border-[#334155]"
+              >
+                <div>
+                  <div className="font-mono-ui text-[#f1f5f9]">{test.title}</div>
+                  <div className="mt-1 text-sm text-[#94a3b8]">
+                    {test.challenge_ids.length} challenges · {test.time_limit_minutes} min
+                  </div>
                 </div>
-              </div>
-              <div className="text-xs font-mono-ui uppercase tracking-[2px] text-[#a78bfa]">
-                Open
-              </div>
-            </Link>
-          ))}
+                <div className="text-xs font-mono-ui uppercase tracking-[2px] text-[#a78bfa]">
+                  Open
+                </div>
+              </Link>
+            ))
+          )}
         </div>
       </Card>
     </div>

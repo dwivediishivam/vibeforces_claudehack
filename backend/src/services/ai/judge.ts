@@ -178,7 +178,7 @@ ${params.rubric}`,
       },
     ],
     response_format: { type: "json_object" },
-    max_tokens: 900,
+    max_completion_tokens: 900,
   });
 
   return safeJsonParse<JudgeResult>(

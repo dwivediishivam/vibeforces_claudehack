@@ -57,7 +57,48 @@ router.get(
     const { data, error } = await request;
     if (error) throw error;
 
-    res.json({ tests: data ?? [] });
+    const tests = data ?? [];
+    const testIds = tests.map((test) => test.id);
+
+    let candidatesTested = 0;
+    let completedAttempts = 0;
+    let avgScore = 0;
+
+    if (testIds.length > 0) {
+      const { data: attempts, error: attemptsError } = await supabaseAdmin
+        .from("test_attempts")
+        .select("test_id, total_score, status")
+        .in("test_id", testIds);
+
+      if (attemptsError) throw attemptsError;
+
+      const completed = (attempts ?? []).filter(
+        (attempt) => attempt.status === "completed",
+      );
+
+      candidatesTested = attempts?.length ?? 0;
+      completedAttempts = completed.length;
+      avgScore =
+        completed.length > 0
+          ? Number(
+              (
+                completed.reduce(
+                  (sum, attempt) => sum + Number(attempt.total_score ?? 0),
+                  0,
+                ) / completed.length
+              ).toFixed(2),
+            )
+          : 0;
+    }
+
+    res.json({
+      tests,
+      stats: {
+        candidates_tested: candidatesTested,
+        completed_attempts: completedAttempts,
+        avg_score: avgScore,
+      },
+    });
   }),
 );
 
@@ -125,7 +166,68 @@ router.get(
 
     if (attemptsError) throw attemptsError;
 
-    res.json({ test, attempts: attempts ?? [] });
+    const { data: challenges, error: challengeError } = await supabaseAdmin
+      .from("challenges")
+      .select("*")
+      .in("id", test.challenge_ids ?? []);
+
+    if (challengeError) throw challengeError;
+
+    const { data: submissions, error: submissionsError } = await supabaseAdmin
+      .from("submissions")
+      .select("user_id, accuracy_score, challenge_id, time_taken_seconds")
+      .eq("context_type", "test")
+      .eq("context_id", String(req.params.id))
+      .eq("status", "completed");
+
+    if (submissionsError) throw submissionsError;
+
+    const submissionSummaryByUser = new Map<
+      string,
+      {
+        avg_accuracy: number | null;
+        solved_count: number;
+        total_time_seconds: number;
+      }
+    >();
+
+    for (const attempt of attempts ?? []) {
+      const userSubmissions = (submissions ?? []).filter(
+        (submission) => submission.user_id === attempt.user_id,
+      );
+
+      const solvedCount = new Set(
+        userSubmissions.map((submission) => submission.challenge_id),
+      ).size;
+      const totalAccuracy = userSubmissions.reduce(
+        (sum, submission) => sum + Number(submission.accuracy_score ?? 0),
+        0,
+      );
+      const totalTimeSeconds = userSubmissions.reduce(
+        (sum, submission) => sum + Number(submission.time_taken_seconds ?? 0),
+        0,
+      );
+
+      submissionSummaryByUser.set(attempt.user_id, {
+        avg_accuracy:
+          userSubmissions.length > 0
+            ? Number((totalAccuracy / userSubmissions.length).toFixed(2))
+            : null,
+        solved_count: solvedCount,
+        total_time_seconds: totalTimeSeconds,
+      });
+    }
+
+    res.json({
+      test,
+      attempts: (attempts ?? []).map((attempt) => ({
+        ...attempt,
+        ...submissionSummaryByUser.get(attempt.user_id),
+      })),
+      challenges: (challenges ?? []).map((challenge) =>
+        sanitizeChallenge(challenge as ChallengeRow),
+      ),
+    });
   }),
 );
 
@@ -134,6 +236,23 @@ router.post(
   requireAuth,
   requireRole("learner"),
   asyncHandler(async (req: Request, res) => {
+    const { data: existingAttempt, error: existingAttemptError } = await supabaseAdmin
+      .from("test_attempts")
+      .select("*")
+      .eq("test_id", String(req.params.id))
+      .eq("user_id", req.auth!.userId)
+      .maybeSingle();
+
+    if (existingAttemptError) throw existingAttemptError;
+
+    if (
+      existingAttempt &&
+      ["completed", "timed_out"].includes(existingAttempt.status)
+    ) {
+      res.json({ attempt: existingAttempt });
+      return;
+    }
+
     const { data, error } = await supabaseAdmin
       .from("test_attempts")
       .upsert(
