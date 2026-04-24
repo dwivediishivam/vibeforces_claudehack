@@ -15,6 +15,8 @@ const app = express();
 
 const allowedOrigins = new Set([
   env.FRONTEND_URL,
+  "https://vibeforces.tech",
+  "https://www.vibeforces.tech",
   "https://vibe-forces.vercel.app",
   "https://project-ppyhn.vercel.app",
   "https://vibeforces.vercel.app",
@@ -25,7 +27,9 @@ const allowedOrigins = new Set([
 function isAllowedOrigin(origin?: string) {
   if (!origin) return true;
   if (allowedOrigins.has(origin)) return true;
-  return /^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin);
+  if (/^https:\/\/[a-z0-9-]+\.vercel\.app$/i.test(origin)) return true;
+  if (/^https:\/\/([a-z0-9-]+\.)*vibeforces\.tech$/i.test(origin)) return true;
+  return false;
 }
 
 app.use(

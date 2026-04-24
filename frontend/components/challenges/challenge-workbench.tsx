@@ -76,14 +76,14 @@ export function ChallengeWorkbench({
     setSubmission(null);
   }, [challenge.id, contextId, contextType]);
 
-  async function submitToApi() {
+  async function submitToApi(resolvedPrompts: string[] = preparedPrompts) {
     const token = auth.session?.access_token;
     const prompts =
       challenge.category === "architecture_pick"
         ? []
-        : preparedPrompts.map((prompt) => ({
-          prompt,
-        }));
+        : resolvedPrompts.map((prompt) => ({
+            prompt,
+          }));
 
     if (!token) {
       throw new Error("Sign in is required to submit and score a challenge.");
@@ -128,7 +128,7 @@ export function ChallengeWorkbench({
 
   const data = challenge.challenge_data as any;
 
-  async function handleSubmit() {
+  async function handleSubmit(override?: { single?: string; plan?: string; act?: string }) {
     if (disabled) {
       toast.error(lockedReason ?? "This challenge is currently locked.");
       return;
@@ -142,14 +142,25 @@ export function ChallengeWorkbench({
       return;
     }
 
-    if (challenge.category !== "architecture_pick" && preparedPrompts.length === 0) {
+    const resolvedPrompts =
+      challenge.category === "architecture_pick"
+        ? []
+        : promptMode === "plan_act"
+          ? [override?.plan ?? planPrompt, override?.act ?? actPrompt]
+              .map((value) => value.trim())
+              .filter(Boolean)
+          : [override?.single ?? singlePrompt]
+              .map((value) => value.trim())
+              .filter(Boolean);
+
+    if (challenge.category !== "architecture_pick" && resolvedPrompts.length === 0) {
       toast.error("Write a prompt before submitting.");
       return;
     }
 
     setSubmitting(true);
     try {
-      await submitToApi();
+      await submitToApi(resolvedPrompts);
       toast.success("Score ready.");
     } catch (error) {
       toast.error(
@@ -236,7 +247,7 @@ export function ChallengeWorkbench({
                     disabled={disabled}
                     onSubmit={(value) => {
                       setActPrompt(value);
-                      void handleSubmit();
+                      void handleSubmit({ act: value });
                     }}
                   />
                 </TabsContent>
@@ -249,7 +260,7 @@ export function ChallengeWorkbench({
                 disabled={disabled}
                 onSubmit={(value) => {
                   setSinglePrompt(value);
-                  void handleSubmit();
+                  void handleSubmit({ single: value });
                 }}
               />
             )}
@@ -290,7 +301,7 @@ export function ChallengeWorkbench({
               disabled={disabled}
               onSubmit={(value) => {
                 setSinglePrompt(value);
-                void handleSubmit();
+                void handleSubmit({ single: value });
               }}
             />
             {submission?.aiResponses[0] ? (
@@ -333,7 +344,7 @@ export function ChallengeWorkbench({
               disabled={disabled}
               onSubmit={(value) => {
                 setSinglePrompt(value);
-                void handleSubmit();
+                void handleSubmit({ single: value });
               }}
             />
             <div className="rounded-xl bg-[#1e293b] px-3 py-2 text-xs font-mono-ui text-[#94a3b8]">
@@ -407,7 +418,7 @@ export function ChallengeWorkbench({
               disabled={disabled}
               onSubmit={(value) => {
                 setSinglePrompt(value);
-                void handleSubmit();
+                void handleSubmit({ single: value });
               }}
             />
             {submission?.aiResponses[0] ? (
