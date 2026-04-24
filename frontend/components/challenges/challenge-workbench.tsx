@@ -39,6 +39,7 @@ export function ChallengeWorkbench({
   disabled = false,
   lockedReason,
   onSubmissionComplete,
+  nextChallengeHref,
 }: {
   challenge: ChallengeRecord;
   contextType?: "practice" | "contest" | "test";
@@ -47,6 +48,7 @@ export function ChallengeWorkbench({
   disabled?: boolean;
   lockedReason?: string;
   onSubmissionComplete?: (submission: Record<string, unknown>) => void;
+  nextChallengeHref?: string;
 }) {
   const auth = useAuth();
   const [singlePrompt, setSinglePrompt] = useState("");
@@ -57,6 +59,18 @@ export function ChallengeWorkbench({
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("plan");
   const [startedAt, setStartedAt] = useState(() => Date.now());
+  const [resetKey, setResetKey] = useState(0);
+
+  function handleTryAgain() {
+    setSubmission(null);
+    setSinglePrompt("");
+    setPlanPrompt("");
+    setActPrompt("");
+    setRanking({});
+    setActiveTab("plan");
+    setStartedAt(Date.now());
+    setResetKey((n) => n + 1);
+  }
 
   const promptMode =
     challenge.category === "spec_to_prompt"
@@ -228,6 +242,7 @@ export function ChallengeWorkbench({
                 </TabsList>
                 <TabsContent value="plan" className="mt-4">
                   <PromptEditor
+                    key={`plan-${resetKey}`}
                     label="Write Your Plan Prompt"
                     initialValue={planPrompt}
                     submitLabel="Lock Plan"
@@ -241,6 +256,7 @@ export function ChallengeWorkbench({
                 </TabsContent>
                 <TabsContent value="act" className="mt-4">
                   <PromptEditor
+                    key={`act-${resetKey}`}
                     label="Write Your Act Prompt"
                     initialValue={actPrompt}
                     submitLabel={submitting ? "Evaluating..." : "Submit Final Prompt"}
@@ -254,6 +270,7 @@ export function ChallengeWorkbench({
               </Tabs>
             ) : (
               <PromptEditor
+                key={`single-${resetKey}`}
                 label="Write Your Prompt"
                 initialValue={singlePrompt}
                 submitLabel={submitting ? "Evaluating..." : "Submit Prompt"}
@@ -275,6 +292,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                onTryAgain={handleTryAgain}
+                nextHref={nextChallengeHref}
               />
             ) : null}
           </div>
@@ -294,6 +313,7 @@ export function ChallengeWorkbench({
           </Card>
           <div className="space-y-6">
             <PromptEditor
+              key={`golf-${resetKey}`}
               label="Write Your Prompt"
               initialValue={singlePrompt}
               submitLabel={submitting ? "Evaluating..." : "Submit"}
@@ -314,6 +334,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                onTryAgain={handleTryAgain}
+                nextHref={nextChallengeHref}
               />
             ) : null}
           </div>
@@ -337,6 +359,7 @@ export function ChallengeWorkbench({
           </Card>
           <div className="space-y-6">
             <PromptEditor
+              key={`bug-${resetKey}`}
               label="Describe the Fix"
               initialValue={singlePrompt}
               submitLabel={submitting ? "Evaluating..." : "Submit Fix"}
@@ -357,6 +380,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                onTryAgain={handleTryAgain}
+                nextHref={nextChallengeHref}
               />
             ) : null}
           </div>
@@ -394,6 +419,8 @@ export function ChallengeWorkbench({
               timeLabel={submission.timeLabel}
               combinedScore={submission.combinedScore}
               feedback={submission.feedback}
+              onTryAgain={handleTryAgain}
+              nextHref={nextChallengeHref}
             />
           ) : null}
         </div>
@@ -412,6 +439,7 @@ export function ChallengeWorkbench({
           </div>
           <div className="space-y-6">
             <PromptEditor
+              key={`ui-${resetKey}`}
               label="Write Your Prompt"
               initialValue={singlePrompt}
               submitLabel={submitting ? "Evaluating..." : "Submit Prompt"}
@@ -431,6 +459,8 @@ export function ChallengeWorkbench({
                 timeLabel={submission.timeLabel}
                 combinedScore={submission.combinedScore}
                 feedback={submission.feedback}
+                onTryAgain={handleTryAgain}
+                nextHref={nextChallengeHref}
               />
             ) : null}
           </div>

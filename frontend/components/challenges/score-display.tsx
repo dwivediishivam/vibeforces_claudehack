@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { motion } from "framer-motion";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 
 function AnimatedMetric({ value, suffix = "" }: { value: number; suffix?: string }) {
   const [display, setDisplay] = useState(0);
@@ -37,12 +39,16 @@ export function ScoreDisplay({
   timeLabel,
   combinedScore,
   feedback,
+  onTryAgain,
+  nextHref,
 }: {
   accuracy: number;
   tokenScore: number;
   timeLabel: string;
   combinedScore: number;
   feedback: string;
+  onTryAgain?: () => void;
+  nextHref?: string;
 }) {
   const cards = [
     { label: "Accuracy", value: accuracy, suffix: "/10" },
@@ -81,12 +87,31 @@ export function ScoreDisplay({
       <div className="surface-subtle rounded-2xl p-4 text-sm italic text-[#94a3b8]">
         {feedback}
       </div>
-      <div className="flex gap-3">
-        <Button variant="ghost" className="border border-[#1e293b]">
-          Try Again
-        </Button>
-        <Button className="bg-[#7c3aed] hover:bg-[#6d28d9]">Next Challenge</Button>
-      </div>
+      {onTryAgain || nextHref ? (
+        <div className="flex flex-wrap gap-3">
+          {onTryAgain ? (
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={onTryAgain}
+              className="border border-[#1e293b] hover:bg-[#111827]"
+            >
+              Try Again
+            </Button>
+          ) : null}
+          {nextHref ? (
+            <Link
+              href={nextHref}
+              className={cn(
+                buttonVariants({ variant: "default" }),
+                "bg-[#7c3aed] hover:bg-[#6d28d9]",
+              )}
+            >
+              Next Challenge
+            </Link>
+          ) : null}
+        </div>
+      ) : null}
     </motion.div>
   );
 }

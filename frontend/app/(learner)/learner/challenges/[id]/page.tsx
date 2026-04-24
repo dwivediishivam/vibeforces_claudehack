@@ -11,10 +11,17 @@ export default async function ChallengeDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const challenge = await apiClient
-    .getChallenge(id)
-    .then((response) => response.challenge)
-    .catch(() => null);
+
+  const [challenge, list] = await Promise.all([
+    apiClient
+      .getChallenge(id)
+      .then((response) => response.challenge)
+      .catch(() => null),
+    apiClient
+      .getChallenges()
+      .then((response) => response.challenges)
+      .catch(() => []),
+  ]);
 
   if (!challenge) {
     return (
@@ -26,5 +33,18 @@ export default async function ChallengeDetailPage({
     );
   }
 
-  return <ChallengeWorkbench challenge={challenge} />;
+  const currentIndex = list.findIndex((item) => item.id === challenge.id);
+  const nextChallenge =
+    currentIndex >= 0 && currentIndex < list.length - 1
+      ? list[currentIndex + 1]
+      : list.find((item) => item.id !== challenge.id);
+
+  return (
+    <ChallengeWorkbench
+      challenge={challenge}
+      nextChallengeHref={
+        nextChallenge ? `/learner/challenges/${nextChallenge.id}` : undefined
+      }
+    />
+  );
 }
