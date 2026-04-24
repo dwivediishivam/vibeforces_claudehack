@@ -77,6 +77,11 @@ export default function CreateTestPage() {
         <h1 className="mt-2 text-3xl font-bold font-mono-ui text-[#f1f5f9]">
           Build a candidate-ready challenge pack
         </h1>
+        <p className="mt-2 max-w-2xl text-sm text-[#94a3b8]">
+          Trial recruiter accounts can create 3 tests and collect up to 10
+          candidate attempts per test. Upgrade from the hire page when you need
+          more volume or custom questions.
+        </p>
       </div>
 
       <Card className="surface-card rounded-2xl p-6">

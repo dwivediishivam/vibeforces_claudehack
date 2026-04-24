@@ -32,18 +32,19 @@ export default function AuthLayout({
             <div className="inline-flex items-center gap-2 rounded-full border border-[#334155] bg-[#0a0f1e]/60 px-3 py-1 text-xs font-mono-ui text-[#94a3b8]">
               <Sparkles className="size-3.5 text-[#a78bfa]" />
               <span>
-                <span className="text-[#a78bfa]">Season 1</span> — Launch catalog live
+                <span className="text-[#a78bfa]">AI-workflow assessments</span> for learners and recruiters
               </span>
             </div>
             <h2 className="mt-6 font-mono-ui text-4xl font-extrabold leading-tight text-[#f1f5f9]">
-              Train your prompt instincts.
+              Learn to ship with AI, then prove it.
             </h2>
             <p className="mt-4 text-base leading-relaxed text-[#94a3b8]">
-              The competitive platform where vibe coders train, rank, and prove
-              they can ship — judged by AI, on AI.
+              Practice realistic prompt-first engineering tasks, get rated, or
+              build recruiter tests that measure whether candidates can actually
+              work with AI.
             </p>
 
-            <div className="mt-8 space-y-3">
+            <div className="mt-8 grid gap-3">
               {highlights.map((h) => (
                 <div
                   key={h.label}

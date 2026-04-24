@@ -24,6 +24,24 @@ router.post(
       })
       .parse(req.body);
 
+    if (req.auth!.profile.role === "recruiter") {
+      const { count, error: countError } = await supabaseAdmin
+        .from("recruiter_tests")
+        .select("id", { count: "exact", head: true })
+        .eq("recruiter_id", req.auth!.userId);
+
+      if (countError) throw countError;
+
+      const testLimit = Number(req.auth!.profile.recruiter_test_limit ?? 3);
+      if ((count ?? 0) >= testLimit) {
+        res.status(403).json({
+          error:
+            "Trial recruiter accounts can create up to 3 tests. Contact VibeForces to raise this limit.",
+        });
+        return;
+      }
+    }
+
     const { data, error } = await supabaseAdmin
       .from("recruiter_tests")
       .insert({
@@ -251,6 +269,42 @@ router.post(
     ) {
       res.json({ attempt: existingAttempt });
       return;
+    }
+
+    const { data: test, error: testError } = await supabaseAdmin
+      .from("recruiter_tests")
+      .select("id, recruiter_id, profiles!recruiter_tests_recruiter_id_fkey(recruiter_candidate_limit, recruiter_plan)")
+      .eq("id", String(req.params.id))
+      .single();
+
+    if (testError || !test) {
+      res.status(404).json({ error: "Test not found." });
+      return;
+    }
+
+    if (!existingAttempt) {
+      const { count: attemptCount, error: attemptCountError } = await supabaseAdmin
+        .from("test_attempts")
+        .select("id", { count: "exact", head: true })
+        .eq("test_id", String(req.params.id));
+
+      if (attemptCountError) throw attemptCountError;
+
+      const recruiterProfile = Array.isArray((test as any).profiles)
+        ? (test as any).profiles[0]
+        : (test as any).profiles;
+      const candidateLimit = Number(
+        recruiterProfile?.recruiter_candidate_limit ?? 10,
+      );
+      const plan = String(recruiterProfile?.recruiter_plan ?? "trial");
+
+      if (plan === "trial" && (attemptCount ?? 0) >= candidateLimit) {
+        res.status(403).json({
+          error:
+            "This trial recruiter test has reached its 10-candidate limit.",
+        });
+        return;
+      }
     }
 
     const { data, error } = await supabaseAdmin

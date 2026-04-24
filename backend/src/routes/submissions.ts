@@ -23,6 +23,7 @@ import {
 } from "../services/ai/judge";
 import {
   computeCombinedScore,
+  computePromptEfficiencyScore,
   computeTimeScore,
   computeTokenScore,
   percentileScore,
@@ -128,6 +129,25 @@ router.post(
       prompt: item.prompt,
       token_count: item.token_count ?? estimateTokens(item.prompt),
     }));
+    const userPromptTokens = prompts.reduce(
+      (total, item) => total + item.token_count,
+      0,
+    );
+
+    const promptTokenBenchmarks: Record<string, number> = {
+      spec_to_prompt:
+        challenge.category === "spec_to_prompt" &&
+        challenge.challenge_data.prompt_mode === "plan_act"
+          ? 1200
+          : 450,
+      token_golf:
+        challenge.category === "token_golf"
+          ? Number(challenge.challenge_data.max_tokens_allowed ?? 220)
+          : 220,
+      bug_fix: 350,
+      architecture_pick: 1,
+      ui_reproduction: 650,
+    };
 
     const timeScore = computeTimeScore(
       body.time_taken_seconds,
@@ -165,8 +185,8 @@ router.post(
         Number(judgeFeedback.overall_score ?? judgeFeedback.accuracy_score ?? 0) ||
         0;
       tokenScore = computeTokenScore(
-        execution.totalTokens,
-        900,
+        userPromptTokens,
+        promptTokenBenchmarks.spec_to_prompt,
       );
       combinedScore = computeCombinedScore({
         category: challenge.category,
@@ -194,7 +214,7 @@ router.post(
       accuracyScore =
         Number(judgeFeedback.correctness_percentage ?? 0) / 10;
       tokenScore = computeTokenScore(
-        execution.totalTokens,
+        userPromptTokens,
         challenge.challenge_data.max_tokens_allowed,
       );
       combinedScore = computeCombinedScore({
@@ -216,8 +236,8 @@ router.post(
         Number(judgeFeedback.overall_score ?? judgeFeedback.precision_score ?? 0) ||
         0;
       tokenScore = computeTokenScore(
-        prompts.reduce((total, item) => total + item.token_count, 0),
-        400,
+        userPromptTokens,
+        promptTokenBenchmarks.bug_fix,
       );
       combinedScore = computeCombinedScore({
         category: challenge.category,
@@ -274,8 +294,8 @@ router.post(
             (Number(judgeFeedback.visual_similarity_percentage ?? 0) / 10),
         ) || 0;
       tokenScore = computeTokenScore(
-        prompts.reduce((total, item) => total + item.token_count, 0),
-        600,
+        userPromptTokens,
+        promptTokenBenchmarks.ui_reproduction,
       );
       combinedScore = computeCombinedScore({
         category: challenge.category,
@@ -294,10 +314,6 @@ router.post(
 
     let tokenPercentile: number | null = null;
     if (challenge.category !== "architecture_pick") {
-      const userTokens = prompts.reduce(
-        (total, item) => total + item.token_count,
-        0,
-      );
       const { data: peerRows } = await supabaseAdmin
         .from("submissions")
         .select("prompts")
@@ -318,9 +334,13 @@ router.post(
         )
         .filter((value: number) => value > 0);
 
-      tokenPercentile = percentileScore(userTokens, peerTokens);
+      tokenPercentile = percentileScore(userPromptTokens, peerTokens);
       if (tokenPercentile !== null) {
-        tokenScore = Math.round(0.5 * tokenScore + 0.5 * tokenPercentile);
+        tokenScore = computePromptEfficiencyScore({
+          promptTokens: userPromptTokens,
+          benchmarkTokens: promptTokenBenchmarks[challenge.category] ?? 500,
+          peerPromptTokens: peerTokens,
+        });
         combinedScore = computeCombinedScore({
           category: challenge.category,
           accuracyRaw: accuracyScore,
@@ -333,6 +353,8 @@ router.post(
       judgeFeedback = {
         ...judgeFeedback,
         token_percentile: tokenPercentile,
+        prompt_tokens_used: userPromptTokens,
+        prompt_token_benchmark: promptTokenBenchmarks[challenge.category] ?? null,
       } as Record<string, unknown>;
     }
 

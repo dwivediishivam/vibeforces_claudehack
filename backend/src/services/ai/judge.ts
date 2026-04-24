@@ -4,6 +4,12 @@ import { runAnthropicVisionJudge } from "./anthropic";
 import { judgeModelFor, runProviderPrompt, type Provider } from "./dispatch";
 import { safeJsonParse } from "../../utils/json";
 
+function scoringProvider(requested?: Provider): Provider {
+  // Execution model can be user-selectable, but grading must stay calibrated.
+  // Prefer one judge for all users; fall back only when OpenAI is unavailable.
+  return openai ? "openai" : requested ?? "openai";
+}
+
 export async function judgeSpecToPrompt(params: {
   expectedBehavior: string;
   rubric: string;
@@ -11,7 +17,7 @@ export async function judgeSpecToPrompt(params: {
   aiOutputs: string[];
   provider?: Provider;
 }) {
-  const provider: Provider = params.provider ?? "openai";
+  const provider = scoringProvider(params.provider);
   const result = await runProviderPrompt(provider, {
     model: judgeModelFor(provider),
     responseFormat: "json_object",
@@ -66,7 +72,7 @@ export async function judgeTokenGolf(params: {
   verificationPrompt: string;
   provider?: Provider;
 }) {
-  const provider: Provider = params.provider ?? "openai";
+  const provider = scoringProvider(params.provider);
   const result = await runProviderPrompt(provider, {
     model: judgeModelFor(provider),
     responseFormat: "json_object",
@@ -78,6 +84,7 @@ Concrete rules:
 - A one-line solution that produces the same outputs as the reference is fully correct (100). Length is irrelevant.
 - A trivial constant return (e.g. \`return -1\`) ONLY counts if the spec genuinely allows it for all inputs. Otherwise it fails on the inputs where it diverges.
 - Different algorithms / data structures with identical behavior are correct.
+- If the shortest possible implementation is a constant expression and it truly satisfies every specified input, it should score 100. If it only works for one example, it should fail.
 - Stylistic differences (names, spacing, language idioms) are irrelevant.
 - Compare on the INPUTS the verification prompt or target description specifies. If unspecified, use a small set of representative inputs including edge cases (empty, single-element, large, negative).
 
@@ -118,7 +125,7 @@ export async function judgeBugFix(params: {
   rubric: string;
   provider?: Provider;
 }) {
-  const provider: Provider = params.provider ?? "openai";
+  const provider = scoringProvider(params.provider);
   const result = await runProviderPrompt(provider, {
     model: judgeModelFor(provider),
     responseFormat: "json_object",
@@ -174,7 +181,7 @@ export async function judgeUIReproduction(params: {
   rubric: string;
   provider?: Provider;
 }) {
-  const provider: Provider = params.provider ?? "openai";
+  const provider = scoringProvider(params.provider);
   const systemPrompt = `You are judging visual similarity between two UI screenshots: the first is the TARGET, the second is the USER'S REPRODUCTION.
 
 Score holistically. A recognizable reproduction of the same UI — same component structure, approximate colors, approximate layout — should score high even if pixel-level details differ. Web rendering is never pixel-perfect, and the judge should not punish expected variance.

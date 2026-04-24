@@ -26,6 +26,27 @@ export function computeTokenScore(
   return Math.round(100 - ((ratio - 0.5) / 1) * 100);
 }
 
+export function computePromptEfficiencyScore(params: {
+  promptTokens: number;
+  benchmarkTokens: number;
+  peerPromptTokens?: number[];
+}) {
+  const benchmarkScore = computeTokenScore(
+    params.promptTokens,
+    params.benchmarkTokens,
+  );
+  const peerScore = percentileScore(
+    params.promptTokens,
+    params.peerPromptTokens ?? [],
+  );
+
+  if (peerScore === null) return benchmarkScore;
+
+  // Production scoring should reward both absolute prompt discipline and
+  // performance against real users, without letting a tiny peer sample dominate.
+  return Math.round(benchmarkScore * 0.6 + peerScore * 0.4);
+}
+
 export function computeTimeScore(
   timeTakenSeconds: number,
   maxTimeAllowedSeconds: number,

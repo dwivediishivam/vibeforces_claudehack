@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
@@ -34,6 +34,11 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [confirmationEmail, setConfirmationEmail] = useState<string | null>(null);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("role") === "recruiter") setRole("recruiter");
+  }, []);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -92,7 +97,8 @@ export default function SignupPage() {
         Create your account
       </h1>
       <p className="mt-2 text-sm text-[#94a3b8]">
-        Free, takes about thirty seconds. Pick how you want to use VibeForces — you can change it later.
+        Create a learner account to practice, or a recruiter trial to send
+        role-ready AI-workflow tests.
       </p>
       <div className="mt-6 grid grid-cols-2 gap-3">
         {roles.map((item) => (

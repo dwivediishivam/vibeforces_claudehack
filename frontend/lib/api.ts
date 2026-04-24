@@ -184,6 +184,9 @@ export const apiClient = {
         rating: number;
         rating_peak: number;
         rating_solves: number;
+        recruiter_plan?: string;
+        recruiter_test_limit?: number;
+        recruiter_candidate_limit?: number;
       } | null;
       rating_history: Array<{
         delta: number;
@@ -222,6 +225,12 @@ export const apiClient = {
       method: "PUT",
       body: JSON.stringify(payload),
       token,
+    });
+  },
+  createHireLead(payload: unknown) {
+    return request<{ lead: { id: string } }>("/hire/leads", {
+      method: "POST",
+      body: JSON.stringify(payload),
     });
   },
 };

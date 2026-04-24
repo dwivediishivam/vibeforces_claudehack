@@ -15,6 +15,9 @@ export interface Profile {
   display_name: string;
   role: UserRole;
   avatar_url?: string | null;
+  recruiter_plan?: "trial" | "paid" | "enterprise";
+  recruiter_test_limit?: number;
+  recruiter_candidate_limit?: number;
 }
 
 export interface ChallengeRow {

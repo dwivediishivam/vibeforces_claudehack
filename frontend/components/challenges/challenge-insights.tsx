@@ -164,9 +164,35 @@ export function ChallengeInsights({
             100,
         )
       : null;
+  const buckets = [
+    { label: "0-40", min: 0, max: 40 },
+    { label: "40-60", min: 40, max: 60 },
+    { label: "60-80", min: 60, max: 80 },
+    { label: "80-90", min: 80, max: 90 },
+    { label: "90+", min: 90, max: 101 },
+  ].map((bucket) => ({
+    ...bucket,
+    count: leaderboard.filter(
+      (row) => row.combined_score >= bucket.min && row.combined_score < bucket.max,
+    ).length,
+  }));
+  const maxBucket = Math.max(1, ...buckets.map((bucket) => bucket.count));
 
   return (
     <Card className="surface-card rounded-2xl p-6">
+      <div className="mb-5 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+        <div>
+          <div className="text-xs uppercase tracking-[2px] text-[#64748b]">
+            Problem analytics
+          </div>
+          <h2 className="mt-1 font-mono-ui text-xl font-semibold text-[#f1f5f9]">
+            Leaderboard, score distribution, and your attempts
+          </h2>
+        </div>
+        <div className="text-xs text-[#64748b]">
+          Prompt tokens are scored against both a budget and peer attempts.
+        </div>
+      </div>
       {myPercentile !== null ? (
         <div className="mb-4 flex items-center justify-between rounded-xl border border-[#7c3aed]/30 bg-[#7c3aed]/5 px-4 py-3 text-sm">
           <div className="text-[#cbd5e1]">
@@ -177,6 +203,34 @@ export function ChallengeInsights({
           </div>
           <div className="text-xs font-mono-ui text-[#94a3b8]">
             Beats <span className="text-[#a78bfa]">{myPercentile}%</span> of solvers
+          </div>
+        </div>
+      ) : null}
+      {leaderboard.length > 0 ? (
+        <div className="mb-5 rounded-xl border border-[#1e293b] bg-[#0a0f1e] p-4">
+          <div className="mb-3 text-xs uppercase tracking-[2px] text-[#64748b]">
+            Score distribution
+          </div>
+          <div className="grid grid-cols-5 items-end gap-3">
+            {buckets.map((bucket) => (
+              <div key={bucket.label} className="space-y-2">
+                <div className="flex h-24 items-end rounded-lg bg-[#030712] p-1">
+                  <div
+                    className="w-full rounded-md bg-gradient-to-t from-[#7c3aed] to-[#a78bfa]"
+                    style={{
+                      height: `${Math.max(6, (bucket.count / maxBucket) * 100)}%`,
+                      opacity: bucket.count === 0 ? 0.25 : 1,
+                    }}
+                  />
+                </div>
+                <div className="text-center font-mono-ui text-[11px] text-[#94a3b8]">
+                  {bucket.label}
+                </div>
+                <div className="text-center font-mono-ui text-[11px] text-[#64748b]">
+                  {bucket.count}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       ) : null}

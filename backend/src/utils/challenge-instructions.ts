@@ -1,72 +1,37 @@
-// Per-challenge learner-facing instructions.
-// Surfaced on the challenge workbench above the prompt area.
-// Each entry should explain the task, what is judged, and one concrete tip.
+// Backend copy of learner-facing challenge instructions.
+// Keep hidden answers/rubrics out of these strings.
 
 export const challengeInstructions: Record<string, string> = {
-  // --- SPEC TO PROMPT ---
-  "SP-E1": `Listen to the voice note once. You're being asked to write a Python function that returns FizzBuzz-style output, but with custom labels ("Vibe", "Code", "VibeCode"). Your prompt has to spell out the range, all three substitution rules, and the exact return type — a list of strings. Judging looks at the AI's output, not your prompt's wording, so be unambiguous. Tip: state "return a list" explicitly so the model doesn't print to stdout.`,
-
-  "SP-E2": `Listen once. You need to prompt for a Python script that reads "employees.csv", computes per-department average salary, and prints results sorted highest-to-lowest. Missing the filename, the sort direction, or the grouping column will tank accuracy. Tip: name the columns explicitly and say "descending by average salary" — vague phrasing is the #1 reason this challenge scores low.`,
-
-  "SP-M1": `Two-stage prompt. In the Plan, outline the API surface — endpoints, methods, validation, filters. In the Act, ask for the implementation. The judge scores the AI's final code against the spec in the voice note, so your Plan should be detailed enough that the Act can succeed in one shot. Tip: list every required endpoint and the exact validation rules in the Plan; treat Act as "now implement what we agreed."`,
-
-  "SP-M2": `Plan then Act. The voice note describes a Markdown→HTML converter with specific parsing rules (headings, bold, italic, links, code blocks). Your Plan should enumerate every supported syntax; your Act prompts for the code. Tip: parsing order matters — handle code blocks before inline formatting, otherwise backticks get re-interpreted.`,
-
-  "SP-H1": `Hardest tier. Voice note plus diagrams describe a real-time chat server with rooms, presence, and message history. Plan must cover: socket events, room lifecycle, persistence, and edge cases. Act asks for working code. Tip: don't try to fit every feature into one Act prompt — list them in priority order so the model nails the core path even if it skimps on extras.`,
-
-  "SP-H2": `Plan + Act. The spec is a parallel task scheduler with dependencies — DAG resolution, concurrent execution, failure handling. Plan should explicitly call out the data structures (adjacency, in-degree, ready-queue) and the concurrency primitive. Tip: state "use asyncio" or "use threads" — leaving the runtime ambiguous gives wildly different solutions.`,
-
-  // --- TOKEN GOLF ---
-  "TG-E1": `Reach the described output using the fewest tokens you can. The reference implementation is hidden — judging is functional: does the AI's code produce the same behavior on representative inputs? A two-character solution that works equals a verbose one. Tip: don't restate the problem; jump straight to "Write Python that reverses a string iteratively, return the result."`,
-
-  "TG-E2": `Token-efficient palindrome check in JavaScript. Functional equivalence wins — a one-line solution scores 100 if its output matches. Tip: name the function and the input type; the model often defaults to lowercase comparison only if you say so.`,
-
-  "TG-M1": `BST insert + search in a single class. Token budget is tight. Tip: ask for "minimal class with insert(value) and search(value), iterative not recursive" — recursion costs more tokens to express but rarely changes correctness scoring.`,
-
-  "TG-M2": `Debounce utility in JavaScript. The reference preserves cancel and "this" context; the judge tests both. Tip: explicitly mention "preserve this context" and "expose .cancel()" — those two phrases are usually the difference between 70 and 100 on accuracy.`,
-
-  "TG-H1": `LRU cache, O(1) get and put. The judge runs functional tests, not a string match. A Map-based one-liner that handles eviction order correctly will score full marks. Tip: in JS, Map preserves insertion order — re-insert on access to bump recency. State that and you save tokens.`,
-
-  "TG-H2": `Event emitter with chainable on/off/emit/once. Functional equivalence: judge fires events and checks listener calls. Tip: ask for "return this from on/off/emit for chaining; once auto-removes after first call" in a single sentence — fewer tokens than describing each method separately.`,
-
-  // --- BUG FIX ---
-  "BF-E1": `Off-by-one in a Python binary search. Generic prompts ("fix the bug", "review the code") score zero. You must (a) point at the specific line or condition, (b) name the actual cause, (c) describe the correct fix. Tip: read the loop boundary — the bug is in how the search space narrows on each iteration.`,
-
-  "BF-E2": `Loop condition bug in JavaScript Fibonacci. Identify what makes the function return the wrong value for small inputs. Tip: don't rewrite the function — just say "the loop condition / starting index is wrong because X, change it to Y."`,
-
-  "BF-M1": `Async race condition in a batch cache helper. Returned promises end up unresolved. The judge gives you points for naming the actual cause (concurrent insertions before resolution), not for proposing a rewrite. Tip: focus on what happens when two callers request the same uncached key simultaneously.`,
-
-  "BF-M2": `React state mutation prevents re-renders. The bug is one line. Tip: state "the array is being mutated in place — replace with a new reference" and you nail the rubric. Don't suggest switching to useReducer.`,
-
-  "BF-H1": `Memory leak in a reconnecting event-listener wrapper. Two leaks coexist — one in reconnect, one in cleanup. Tip: walk the lifecycle — addEventListener calls without matching removeEventListener on every reconnect. Mention both leak sites; partial credit if you only catch one.`,
-
-  "BF-H2": `Two-resource deadlock in a promise chain. Two callers acquire resources in opposite orders. Tip: name the resources, the acquisition order, and propose a single global ordering as the fix. Saying "use a mutex" is too vague.`,
-
-  // --- ARCHITECTURE PICK ---
-  "AP-E1": `Rank three database choices for a simple blog. There IS a correct ordering — pragmatic constraints (time-to-ship, hosting cost, schema flexibility) drive it. Tip: think "what does a small team actually need on day one?" not "what scales to a million users?"`,
-
-  "AP-E2": `Rank three approaches for a CRUD admin panel. Tip: weigh maintenance and team familiarity, not raw feature count. The flashiest option is rarely the right pick.`,
-
-  "AP-M1": `API design trade-offs — REST vs GraphQL vs RPC for a moderate app. Tip: client diversity and team experience matter more than theoretical fit. If your team has never touched GraphQL, ranking it first is usually wrong.`,
-
-  "AP-M2": `Caching strategy for a read-heavy service. Three options trade off staleness, complexity, and cost. Tip: start from the read/write ratio and the staleness tolerance — those two numbers decide the ranking.`,
-
-  "AP-H1": `Service boundaries for scaling a monolith. Three decomposition strategies. Tip: rank by reversibility — the option that lets you back out easily wins over the "ideal" decomposition that locks you in.`,
-
-  "AP-H2": `Multi-region strategy. Three architectures with different consistency/availability trade-offs. Tip: the "best" is whichever matches the actual product's tolerance for staleness; don't default to strong consistency unless the use case demands it.`,
-
-  // --- UI REPRODUCTION ---
-  "UR-E1": `One screenshot, one prompt, one shot. Reproduce the component (button or card) in HTML/CSS. Judge compares the rendered screenshots, not your prompt. Tip: describe layout, color family, and spacing in concrete terms ("rounded-lg, dark gray bg, 16px padding"). Vague phrasing like "modern button" produces inconsistent output.`,
-
-  "UR-E2": `Reproduce a small form. Tip: count the fields, mention the label position, and state alignment. The judge is forgiving on exact pixel match but harsh on missing components.`,
-
-  "UR-M1": `Reproduce a navigation bar with logo, links, and CTA. Tip: spell out the order of items left-to-right and which one is the primary CTA — model defaults often reverse them.`,
-
-  "UR-M2": `Reproduce a card grid section. Tip: state the grid count and gap explicitly ("3 columns on desktop, 16px gap"). Layout precision matters more than typography here.`,
-
-  "UR-H1": `Full landing-page hero section. Tip: lead with structure (header / hero / CTA / features), then go top-down through colors and copy. A flat description tends to drop the visual hierarchy.`,
-
-  "UR-H2": `Full dashboard layout — sidebar, header, content grid, stats cards. Tip: describe the layout as a 3-region grid first, then fill in each region. The judge weights layout match heavily; getting the regions right rescues weak styling.`,
+  "SP-E1": `Listen carefully, then write a prompt that turns the spoken requirement into an exact coding task. Your score comes from whether the AI output satisfies the spec, not from whether your prompt sounds fancy. Include boundaries, replacement rules, output shape, language, and any formatting constraints.`,
+  "SP-E2": `Convert the voice note into a complete data-processing request. A good prompt names the file, columns, grouping operation, calculation, sort order, and output format. The evaluator checks the generated code against the intended behavior, so avoid vague phrases like "summarize this CSV."`,
+  "SP-M1": `Use the Plan step to capture the API contract: routes, methods, validation, storage model, error cases, and response codes. Use the Act step to ask for implementation against that plan. Do not rely on the model to infer omitted constraints from context.`,
+  "SP-M2": `Use Plan to define a parsing strategy and list each supported Markdown feature. Use Act to request a self-contained implementation. The evaluator rewards prompts that preserve all stated constraints and produce maintainable code, not prompts that merely ask for "a converter."`,
+  "SP-H1": `Treat this like a real backend handoff. Your Plan should cover events, state ownership, room lifecycle, edge cases, and failure handling. Your Act prompt should ask for working code that follows the plan. The score reflects coverage of the full spoken spec.`,
+  "SP-H2": `Plan the scheduler before asking for code. Name the graph model, dependency handling, concurrency approach, cycle behavior, logging expectations, and final metrics. The evaluator checks whether the generated implementation behaves like the requested system.`,
+  "TG-E1": `Write the shortest prompt that still causes the model to generate functionally correct code. The reference is hidden and scoring is behavior-based. You are rewarded for concise instructions that preserve required constraints.`,
+  "TG-E2": `This is prompt efficiency under constraints. Your prompt should be short, but not so short that the model misses normalization or function-shape requirements. Functional equivalence matters more than matching a reference implementation.`,
+  "TG-M1": `Prompt for the smallest complete data-structure implementation that satisfies the public requirements. Include method names and expected behavior. Do not waste tokens restating examples unless they remove ambiguity.`,
+  "TG-M2": `A good token-golf prompt preserves behavior that is easy for models to omit: timing semantics, context, return value, and cleanup. The judge evaluates behavior, while token score rewards brevity against peers.`,
+  "TG-H1": `Ask for a compact but correct cache implementation. The evaluator cares about observable get/put behavior, eviction order, capacity handling, and expected complexity. Short prompts win only when they still produce correct behavior.`,
+  "TG-H2": `Prompt for a compact event utility with all required public methods and lifecycle behavior. The score rewards functional equivalence, not textual similarity. Keep the prompt tight but include the semantics that define correctness.`,
+  "BF-E1": `Your job is not to ask the AI to "fix it"; your job is to demonstrate debugging precision. Identify the suspicious area, explain the failure mode, and describe the direction of the fix. The evaluator grades how specifically your prompt would guide a model to the real bug.`,
+  "BF-E2": `Read the code and write a repair prompt that names the failing behavior and the logic responsible for it. You do not need to provide a full rewrite. Precise diagnosis beats broad review language.`,
+  "BF-M1": `Focus on runtime behavior under concurrency. A strong bug-fix prompt names the scenario that fails, the state that becomes inconsistent, and the kind of change needed to make the code reliable.`,
+  "BF-M2": `This challenge tests whether you can spot framework-specific bugs and explain them to an AI. Name the user-visible symptom, the underlying state/update issue, and the expected repair direction without rewriting unrelated code.`,
+  "BF-H1": `Analyze lifecycle and cleanup behavior. A strong answer identifies where repeated operations accumulate stale resources and instructs the AI to make setup/teardown symmetrical.`,
+  "BF-H2": `Reason about ordering, shared resources, and failure cases. Your prompt should explain how the program can get stuck and what invariant the fix should enforce. Vague concurrency advice receives low credit.`,
+  "AP-E1": `Rank the three options from best to worst for the scenario. Score is based on practical engineering judgment: constraints, team size, operational load, reversibility, and time-to-ship. Do not rank by hype or theoretical scale alone.`,
+  "AP-E2": `Choose the ordering that best fits a small product team building a maintainable admin experience. Evaluate implementation effort, long-term maintenance, user needs, and risk.`,
+  "AP-M1": `Rank the API approaches by fit for the described product, not by personal preference. Consider client needs, schema evolution, debugging, team familiarity, and migration cost.`,
+  "AP-M2": `Rank caching strategies by the actual read/write pattern and acceptable staleness. Good architecture judgment balances performance, correctness, operational complexity, and failure modes.`,
+  "AP-H1": `Evaluate service-boundary choices through reversibility, ownership, data coupling, deployment risk, and incremental migration. The best option is usually the one that reduces risk while preserving future flexibility.`,
+  "AP-H2": `Rank multi-region designs by consistency needs, latency, failure tolerance, data ownership, and operational maturity. Do not assume the most complex architecture is best.`,
+  "UR-E1": `Study the screenshot and write one prompt for self-contained HTML/CSS. Describe layout, dimensions, spacing, color, border radius, typography hierarchy, and visual states. The evaluator compares rendered screenshots.`,
+  "UR-E2": `Prompt for the exact small UI shown, not a generic form. Count visible elements, describe alignment, labels, input styles, CTA hierarchy, and background treatment.`,
+  "UR-M1": `Describe the navigation from left to right, including logo treatment, link grouping, spacing, active/CTA state, and responsive expectations. Layout match is weighted heavily.`,
+  "UR-M2": `Write a prompt that captures section structure first, then card details. Include grid columns, gaps, card hierarchy, text sizes, icon/image treatment, and CTA placement.`,
+  "UR-H1": `For a full hero page, organize the prompt top-down: page background, nav, hero copy, CTAs, visual accents, spacing, and responsive behavior. Avoid generic adjectives unless paired with concrete visual details.`,
+  "UR-H2": `For a dashboard screenshot, define the page regions before styling: sidebar, header, stats, main content, tables/cards, and spacing. The score rewards structural accuracy before pixel polish.`,
 };
 
 export function instructionsFor(code: string): string | null {

@@ -12,7 +12,7 @@ router.get(
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select(
-        "id, username, display_name, role, avatar_url, rating, rating_peak, rating_solves",
+        "id, username, display_name, role, avatar_url, rating, rating_peak, rating_solves, recruiter_plan, recruiter_test_limit, recruiter_candidate_limit",
       )
       .eq("id", req.auth!.userId)
       .single();

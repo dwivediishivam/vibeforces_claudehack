@@ -33,6 +33,12 @@ export default function LoginPage() {
       } = await supabase.auth.getSession();
 
       if (session?.user) {
+        if (!session.user.email_confirmed_at) {
+          await supabase.auth.signOut();
+          toast.error("Please verify your email before signing in.");
+          return;
+        }
+
         const { data: profile } = await supabase
           .from("profiles")
           .select("role")

@@ -29,6 +29,9 @@ export function ModelSelector({
             {current.subtitle}
           </span>
         </div>
+        <div className="text-[10px] text-[#64748b]">
+          Execution model only. Grading uses a calibrated judge.
+        </div>
       </div>
       <select
         value={value}

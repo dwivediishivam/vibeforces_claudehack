@@ -92,7 +92,12 @@ export default async function HomePage() {
       <header className="sticky top-0 z-50 border-b border-[#1e293b]/60 bg-[#030712]/80 backdrop-blur-xl">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 lg:px-8">
           <Logo />
-          <HeaderAuthCta />
+          <div className="flex items-center gap-4">
+            <Link href="/hire" className="hidden text-sm font-mono-ui text-[#94a3b8] hover:text-white sm:inline">
+              For companies
+            </Link>
+            <HeaderAuthCta />
+          </div>
         </div>
       </header>
 
@@ -127,7 +132,8 @@ export default async function HomePage() {
               In 2026, shipping software is mostly directing AI well. VibeForces
               gives you short, judged challenges — write a prompt, an AI runs it,
               another AI scores the result — so you can practice, get rated, and
-              show recruiters what you can actually do.
+              show recruiters what you can actually do. Companies can use the
+              same challenge pool to test AI-native engineering skill.
             </p>
 
             <div className="mt-10 flex flex-wrap justify-center gap-3">
@@ -140,6 +146,15 @@ export default async function HomePage() {
                 )}
               >
                 Browse challenges
+              </Link>
+              <Link
+                href="/hire"
+                className={cn(
+                  buttonVariants({ size: "lg", variant: "ghost" }),
+                  "px-8 text-[#cbd5e1] hover:bg-[#111827] hover:text-white",
+                )}
+              >
+                Hire with VibeForces
               </Link>
             </div>
           </div>

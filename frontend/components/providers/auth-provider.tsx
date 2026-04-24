@@ -148,11 +148,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!supabase) {
           throw new Error("Supabase auth is not configured for this environment.");
         }
-        const { error } = await supabase.auth.signInWithPassword({
+        const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password,
         });
         if (error) throw error;
+        if (data.user && !data.user.email_confirmed_at) {
+          await supabase.auth.signOut();
+          throw new Error("Please verify your email before signing in.");
+        }
       },
       async signUp(input) {
         if (!supabase) {
@@ -177,14 +181,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) throw error;
 
         if (data.session?.user) {
-          setSession(data.session);
-          setProfile(await waitForProfile(data.session.user.id));
+          await supabase.auth.signOut();
+          setSession(null);
+          setProfile(null);
           setLoading(false);
         }
 
         return {
           email: input.email,
-          requiresEmailConfirmation: !data.session,
+          requiresEmailConfirmation: true,
           role: input.role,
         };
       },
