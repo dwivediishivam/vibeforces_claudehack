@@ -56,15 +56,20 @@ async function request<T>(
   if (init?.token) headers.set("Authorization", `Bearer ${init.token}`);
 
   let response: Response;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 5000);
 
   try {
     response = await fetch(`${API_BASE}${pathname}`, {
       ...init,
       headers,
       cache: "no-store",
+      signal: controller.signal,
     });
   } catch {
     throw new Error(`Unable to reach the VibeForces API at ${API_BASE}.`);
+  } finally {
+    clearTimeout(timeout);
   }
 
   return parseJson<T>(response);
