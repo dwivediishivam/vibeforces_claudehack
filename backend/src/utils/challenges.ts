@@ -49,7 +49,6 @@ export function sanitizeChallenge(challenge: ChallengeRow) {
     case "ui_reproduction":
       base.challenge_data = {
         target_screenshot_url: challenge.challenge_data.target_screenshot_url,
-        description: challenge.challenge_data.description,
       };
       break;
     default:

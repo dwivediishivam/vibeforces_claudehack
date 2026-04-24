@@ -49,3 +49,21 @@ export async function htmlToBase64Screenshot(html: string) {
   const buffer = await htmlToScreenshot(html);
   return Buffer.from(buffer).toString("base64");
 }
+
+export async function htmlToBase64ScreenshotSafe(html: string): Promise<string | null> {
+  try {
+    return await htmlToBase64Screenshot(html);
+  } catch (error) {
+    console.error("htmlToBase64ScreenshotSafe failed:", error);
+    return null;
+  }
+}
+
+export async function fetchUrlToBase64(url: string): Promise<string> {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Failed to fetch ${url}: ${response.status}`);
+  }
+  const arrayBuffer = await response.arrayBuffer();
+  return Buffer.from(arrayBuffer).toString("base64");
+}

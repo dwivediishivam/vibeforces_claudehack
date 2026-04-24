@@ -25,7 +25,14 @@ export function getSupabaseBrowserClient() {
   }
 
   if (!client) {
-    client = createBrowserClient(env.url, env.key);
+    client = createBrowserClient(env.url, env.key, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        flowType: "pkce",
+      },
+    });
   }
 
   return client;

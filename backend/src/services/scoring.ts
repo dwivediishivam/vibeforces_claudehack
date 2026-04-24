@@ -20,7 +20,10 @@ export function computeTokenScore(
   maxTokensAllowed: number | undefined,
 ) {
   if (!maxTokensAllowed || maxTokensAllowed <= 0) return 100;
-  return Math.max(0, 100 - (tokensUsed / maxTokensAllowed) * 100);
+  const ratio = tokensUsed / maxTokensAllowed;
+  if (ratio <= 0.5) return 100;
+  if (ratio >= 1.5) return 0;
+  return Math.round(100 - ((ratio - 0.5) / 1) * 100);
 }
 
 export function computeTimeScore(
@@ -28,7 +31,10 @@ export function computeTimeScore(
   maxTimeAllowedSeconds: number,
 ) {
   if (!maxTimeAllowedSeconds || maxTimeAllowedSeconds <= 0) return 100;
-  return Math.max(0, 100 - (timeTakenSeconds / maxTimeAllowedSeconds) * 100);
+  const ratio = timeTakenSeconds / maxTimeAllowedSeconds;
+  if (ratio <= 0.3) return 100;
+  if (ratio >= 1) return 25;
+  return Math.round(100 - ((ratio - 0.3) / 0.7) * 75);
 }
 
 export function computeCombinedScore(params: {

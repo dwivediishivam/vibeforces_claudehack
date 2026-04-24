@@ -434,7 +434,7 @@ export function ChallengeWorkbench({
               alt={challenge.title}
             />
             <Card className="surface-subtle rounded-2xl p-4 text-sm text-[#94a3b8]">
-              {String(data.description)}
+              Study the screenshot and write a single prompt that guides the model to reproduce it. No reference description is provided — match layout, colors, typography, and spacing from the image alone.
             </Card>
           </div>
           <div className="space-y-6">

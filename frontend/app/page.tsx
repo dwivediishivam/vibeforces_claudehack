@@ -59,17 +59,17 @@ const steps = [
   {
     n: "01",
     title: "Pick a challenge",
-    body: "Browse curated challenges across five categories and three difficulty tiers.",
+    body: "Choose a mode and difficulty. Each challenge is a real task an AI engineer handles on the job.",
   },
   {
     n: "02",
     title: "Write your prompt",
-    body: "GPT-4.1 is your execution engine. GPT-5.4-mini is your impartial judge.",
+    body: "You write the prompt. A frontier model runs it. The solution is exactly what your prompt produced — no hand-edits.",
   },
   {
     n: "03",
     title: "Get ranked",
-    body: "Accuracy, token efficiency, and speed compound into your global rating.",
+    body: "An LLM-as-judge grades accuracy. Token usage and time roll into a single rating on the global leaderboard.",
   },
 ];
 
@@ -141,8 +141,9 @@ export default async function HomePage() {
               LeetCode for Vibecoders.
             </p>
             <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#94a3b8]">
-              Train, rank, and prove you can ship — with prompts, not syntax.
-              Judged by AI, on AI.
+              The skill that ships software today is directing AI — not typing
+              it. Practice, rank, and prove that skill, judged by AI on real
+              prompt-engineering tasks.
             </p>
 
             <div className="mt-10 flex flex-wrap justify-center gap-3">
@@ -290,9 +291,11 @@ export default async function HomePage() {
                     Hire developers who can actually ship in 2026.
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-[#94a3b8] md:text-base">
-                    Syntax tests measure the past. VibeForces measures the skill
-                    that matters now — guiding AI to correct, efficient, ready
-                    output under real constraints.
+                    LeetCode measured whether a candidate could hand-write
+                    algorithms. That is not the job anymore. Send candidates a
+                    VibeForces test and see, in one sitting, whether they can
+                    direct AI to correct, efficient output under real
+                    constraints — with a full rubric you can review.
                   </p>
                 </div>
                 <div className="flex flex-col gap-3 md:items-end">
@@ -373,8 +376,8 @@ export default async function HomePage() {
               Ready to train your instincts?
             </h2>
             <p className="mx-auto mt-4 max-w-lg text-base leading-relaxed text-[#94a3b8]">
-              Free to start. No credit card. Sign up and get your first rating in
-              under ten minutes.
+              Free to start. Pick a challenge, write a prompt, get a rating.
+              Your first attempt takes under ten minutes.
             </p>
             <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
               <Link

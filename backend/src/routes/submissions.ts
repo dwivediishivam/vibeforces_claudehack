@@ -27,7 +27,8 @@ import {
   computeTokenScore,
   scoreArchitectureRanking,
 } from "../services/scoring";
-import { htmlToBase64Screenshot } from "../services/screenshot";
+import { htmlToBase64Screenshot, htmlToBase64ScreenshotSafe, fetchUrlToBase64 } from "../services/screenshot";
+import { env } from "../config/env";
 import { estimateTokens } from "../services/ai/openai";
 
 const router = Router();
@@ -217,10 +218,24 @@ router.post(
       });
     } else if (challenge.category === "ui_reproduction") {
       const execution = await executeUIReproductionPrompt(prompts[0]?.prompt ?? "");
-      const generatedScreenshotBase64 = await htmlToBase64Screenshot(execution.html);
-      const targetScreenshotBase64 = await htmlToBase64Screenshot(
-        challenge.challenge_data.target_html_css,
-      );
+      const targetPath = String(challenge.challenge_data.target_screenshot_url ?? "");
+      const targetUrl = targetPath.startsWith("http")
+        ? targetPath
+        : `${env.FRONTEND_URL.replace(/\/$/, "")}${targetPath}`;
+
+      const [generatedScreenshotBase64, targetScreenshotBase64] = await Promise.all([
+        htmlToBase64ScreenshotSafe(execution.html),
+        fetchUrlToBase64(targetUrl).catch(() =>
+          htmlToBase64ScreenshotSafe(String(challenge.challenge_data.target_html_css ?? "")),
+        ),
+      ]);
+
+      if (!generatedScreenshotBase64 || !targetScreenshotBase64) {
+        res.status(502).json({
+          error: "Could not render UI screenshots for evaluation. Please try again.",
+        });
+        return;
+      }
       judgeFeedback = await judgeUIReproduction({
         targetScreenshotBase64,
         generatedScreenshotBase64,
