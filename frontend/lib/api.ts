@@ -7,10 +7,10 @@ import type {
 
 const API_BASE =
   process.env.NODE_ENV === "production"
-    ? typeof window === "undefined"
-      ? process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
-        "https://vibeforces-api.onrender.com/api/v1"
-      : "/api/v1"
+    ? process.env.NEXT_PUBLIC_API_URL?.replace(/\/$/, "") ??
+      (typeof window === "undefined"
+        ? "https://vibeforces-api.onrender.com/api/v1"
+        : "/api/v1")
     : "http://localhost:3001/api/v1";
 
 type SubmissionRecord = Record<string, unknown>;
@@ -49,30 +49,44 @@ async function parseJson<T>(response: Response): Promise<T> {
 
 async function request<T>(
   pathname: string,
-  init?: RequestInit & { token?: string | null },
+  init?: RequestInit & {
+    token?: string | null;
+    timeoutMs?: number;
+    retries?: number;
+  },
 ) {
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   if (init?.token) headers.set("Authorization", `Bearer ${init.token}`);
 
   let response: Response;
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 5000);
+  const timeoutMs = init?.timeoutMs ?? 15000;
+  const retries = init?.retries ?? (init?.method ? 0 : 1);
 
-  try {
-    response = await fetch(`${API_BASE}${pathname}`, {
-      ...init,
-      headers,
-      cache: "no-store",
-      signal: controller.signal,
-    });
-  } catch {
-    throw new Error(`Unable to reach the VibeForces API at ${API_BASE}.`);
-  } finally {
-    clearTimeout(timeout);
+  for (let attempt = 0; attempt <= retries; attempt += 1) {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), timeoutMs);
+    try {
+      response = await fetch(`${API_BASE}${pathname}`, {
+        ...init,
+        headers,
+        cache: "no-store",
+        signal: controller.signal,
+      });
+      clearTimeout(timeout);
+      return parseJson<T>(response);
+    } catch {
+      clearTimeout(timeout);
+      if (attempt === retries) {
+        throw new Error(
+          "The VibeForces API is waking up or temporarily unavailable. Please retry in a few seconds.",
+        );
+      }
+      await new Promise((resolve) => setTimeout(resolve, 900));
+    }
   }
 
-  return parseJson<T>(response);
+  throw new Error("The VibeForces API is temporarily unavailable.");
 }
 
 export const apiClient = {
@@ -151,6 +165,7 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(payload),
       token,
+      timeoutMs: 180000,
     });
   },
   getMySubmissions(token?: string | null) {
@@ -163,6 +178,7 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(payload),
       token,
+      timeoutMs: 30000,
     });
   },
   startTest(id: string, token?: string | null) {
@@ -236,6 +252,7 @@ export const apiClient = {
     return request<{ lead: { id: string } }>("/hire/leads", {
       method: "POST",
       body: JSON.stringify(payload),
+      timeoutMs: 30000,
     });
   },
 };

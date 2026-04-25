@@ -106,6 +106,49 @@ Do not include anything outside this JSON.`,
   };
 }
 
+export async function executeBugFixPrompt(params: {
+  brokenCode: string;
+  language: string;
+  task: string;
+  userPrompt: string;
+  provider?: Provider;
+}) {
+  const provider: Provider = params.provider ?? "openai";
+  const result = await runProviderPrompt(provider, {
+    model: executionModelFor(provider),
+    responseFormat: "json_object",
+    systemPrompt: `You are a senior software engineer fixing a bug.
+You will receive broken code, a task description, and a user's repair prompt.
+Apply ONLY the repair requested by the user's prompt. Do not rewrite unrelated code.
+
+IMPORTANT: Respond in this EXACT JSON format:
+{
+  "fixed_code": "<complete corrected code>",
+  "language": "<programming language>",
+  "explanation": "<brief explanation of what changed and why>"
+}
+
+Do not include anything outside this JSON.`,
+    userPrompt: `## Language
+${params.language}
+
+## Task
+${params.task}
+
+## Broken Code
+${params.brokenCode}
+
+## User Repair Prompt
+${params.userPrompt}`,
+    maxTokens: 2600,
+  });
+
+  return {
+    content: result.content,
+    totalTokens: result.inputTokens + result.outputTokens,
+  };
+}
+
 export async function executeUIReproductionPrompt(prompt: string, provider: Provider = "openai") {
   const result = await runProviderPrompt(provider, {
     model: executionModelFor(provider),

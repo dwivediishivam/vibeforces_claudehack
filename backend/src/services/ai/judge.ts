@@ -118,6 +118,8 @@ ${params.actualOutput}`,
 }
 
 export async function judgeBugFix(params: {
+  brokenCode: string;
+  aiFixedCode: string;
   actualBug: string;
   bugLocation: string;
   expectedFix: string;
@@ -129,11 +131,21 @@ export async function judgeBugFix(params: {
   const result = await runProviderPrompt(provider, {
     model: judgeModelFor(provider),
     responseFormat: "json_object",
-    systemPrompt: `You are judging how precisely a user's prompt pinpointed a bug.
+    systemPrompt: `You are judging a bug-fix prompting exercise.
+
+Evaluate two signals:
+1. Prompt precision: did the user's prompt identify the relevant area, cause, and fix direction?
+2. Fix correctness: did the AI-generated fixed code actually repair the bug without unrelated damage?
 
 Scoring is a sum: 4 points for locating the bug (line, function, or specific code), 4 points for naming the real cause, 2 points for describing the correct fix direction. Partial credit is fine. Paraphrasing the rubric counts as long as the core idea is correct.
 
-Do NOT penalize a user for being terse or for using different wording than the rubric. Reward any prompt that, if sent to an AI, would have produced the expected fix.
+Then adjust the overall score using the generated fix:
+- If the prompt was vague but the generated fix is correct by luck, cap overall_score at 6.
+- If the prompt is precise but the generated fix is incomplete, cap overall_score at 8.
+- If both prompt and generated fix are correct, score 9-10.
+- If the generated fix does not address the actual bug, cap overall_score at 5.
+
+Do NOT compare code text line-by-line. Judge functional repair and minimality. Different implementations that fix the same behavior are valid.
 
 - 10: Located, diagnosed, and directed the fix.
 - 7-9: Correctly identified the real bug; fix direction may be fuzzy.
@@ -146,12 +158,20 @@ Respond in this EXACT JSON format:
   "precision_score": <number 0-10>,
   "identification_accuracy": <number 0-10>,
   "overall_score": <number 0-10>,
+  "fix_correctness_score": <number 0-10>,
   "feedback": "<2-3 sentences>",
   "user_identified_location": <boolean>,
   "user_identified_cause": <boolean>,
-  "user_described_fix_direction": <boolean>
+  "user_described_fix_direction": <boolean>,
+  "generated_fix_is_correct": <boolean>
 }`,
-    userPrompt: `## Actual Bug
+    userPrompt: `## Broken Code
+${params.brokenCode}
+
+## AI Generated Fixed Code
+${params.aiFixedCode}
+
+## Actual Bug
 ${params.actualBug}
 
 ## Bug Location
@@ -171,6 +191,7 @@ ${params.userPrompt}`,
   return safeJsonParse<JudgeResult>(result.content, {
     precision_score: 0,
     overall_score: 0,
+    fix_correctness_score: 0,
     feedback: "Judge response was not parseable.",
   });
 }

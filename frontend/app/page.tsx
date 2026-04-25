@@ -1,12 +1,15 @@
 import Link from "next/link";
 import {
   ArrowRight,
+  Building2,
   Bug,
+  CheckCircle2,
   Flame,
   GitBranch,
   Mic,
   Palette,
   Sparkles,
+  Trophy,
   Zap,
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
@@ -74,6 +77,23 @@ const steps = [
   },
 ];
 
+const audiences = [
+  {
+    icon: Trophy,
+    title: "For learners",
+    body: "Practice AI-assisted engineering tasks, get scored on output quality and prompt discipline, and build a Codeforces-style rating.",
+    cta: "Start practicing",
+    href: "/signup",
+  },
+  {
+    icon: Building2,
+    title: "For recruiters",
+    body: "Create timed tests that measure whether candidates can direct AI, debug generated code, and reason through architecture.",
+    cta: "See hiring plans",
+    href: "/hire",
+  },
+];
+
 export default async function HomePage() {
   const contests = await apiClient
     .getContests()
@@ -126,14 +146,13 @@ export default async function HomePage() {
               VibeForces
             </h1>
             <p className="mx-auto mt-5 max-w-2xl text-xl font-semibold text-[#f1f5f9] md:text-2xl">
-              LeetCode for the AI-coding era.
+              Train and test the skill that actually ships software with AI.
             </p>
-            <p className="mx-auto mt-4 max-w-xl text-base leading-relaxed text-[#94a3b8]">
-              In 2026, shipping software is mostly directing AI well. VibeForces
-              gives you short, judged challenges — write a prompt, an AI runs it,
-              another AI scores the result — so you can practice, get rated, and
-              show recruiters what you can actually do. Companies can use the
-              same challenge pool to test AI-native engineering skill.
+            <p className="mx-auto mt-4 max-w-2xl text-base leading-relaxed text-[#94a3b8]">
+              VibeForces is a competitive platform for prompt-first software
+              work. Learners solve practical challenges. Recruiters send timed
+              tests. Every attempt is evaluated on correctness, prompt quality,
+              token efficiency, speed, and engineering judgment.
             </p>
 
             <div className="mt-10 flex flex-wrap justify-center gap-3">
@@ -157,6 +176,33 @@ export default async function HomePage() {
                 Hire with VibeForces
               </Link>
             </div>
+          </div>
+        </section>
+
+        {/* AUDIENCES */}
+        <section className="px-4 pb-12 lg:px-8">
+          <div className="mx-auto grid max-w-5xl gap-4 md:grid-cols-2">
+            {audiences.map((audience) => (
+              <Link
+                key={audience.title}
+                href={audience.href}
+                className="surface-card group rounded-3xl p-7 transition-all duration-200 hover:-translate-y-1 hover:border-[#334155]"
+              >
+                <div className="inline-flex size-12 items-center justify-center rounded-2xl bg-[#7c3aed]/10 text-[#a78bfa]">
+                  <audience.icon className="size-5" />
+                </div>
+                <h2 className="mt-5 font-mono-ui text-2xl font-bold text-[#f1f5f9]">
+                  {audience.title}
+                </h2>
+                <p className="mt-3 text-sm leading-7 text-[#94a3b8]">
+                  {audience.body}
+                </p>
+                <div className="mt-5 inline-flex items-center gap-2 font-mono-ui text-sm text-[#a78bfa]">
+                  {audience.cta}
+                  <ArrowRight className="size-4 transition-transform group-hover:translate-x-1" />
+                </div>
+              </Link>
+            ))}
           </div>
         </section>
 
@@ -222,7 +268,7 @@ export default async function HomePage() {
                   Currently: SDE-1 &amp; SDE-2 challenges
                 </div>
                 <p className="mt-3 text-sm leading-6 text-[#bbf7d0]/80">
-                  A launch catalog across prompt precision, debugging,
+                  A live challenge set across prompt precision, debugging,
                   architecture judgment, and UI reproduction.
                 </p>
               </div>
@@ -284,33 +330,43 @@ export default async function HomePage() {
                     For recruiters
                   </div>
                   <h2 className="mt-3 text-2xl font-bold font-mono-ui text-[#f1f5f9] md:text-3xl">
-                    Hire for the skill that actually ships.
+                    Add AI-workflow testing to your hiring loop.
                   </h2>
                   <p className="mt-4 text-sm leading-7 text-[#94a3b8] md:text-base">
-                    Hand-written algorithm puzzles don&apos;t reflect modern
-                    engineering. Pick a few VibeForces challenges, set a time
-                    limit, and send candidates a single link. You get back
-                    accuracy, token efficiency, time, and the actual prompts
-                    they wrote — so you can see how someone really thinks with
-                    AI, not just whether they can memorise patterns.
+                    VibeForces is not here to replace interviews, DSA, or system
+                    design. It gives you one more signal: can this person use AI
+                    to understand a spec, write precise prompts, debug generated
+                    code, and choose sensible architecture under time pressure?
                   </p>
+                  <div className="mt-5 grid gap-2 text-sm text-[#cbd5e1]">
+                    {[
+                      "Trial accounts: 3 tests, 10 candidates per test",
+                      "Question-level scores, leaderboards, and attempt history",
+                      "Custom company questions available for paid plans",
+                    ].map((item) => (
+                      <div key={item} className="flex items-center gap-2">
+                        <CheckCircle2 className="size-4 text-[#4ade80]" />
+                        {item}
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="flex flex-col gap-3 md:items-end">
                   <Link
-                    href="/signup"
+                    href="/signup?role=recruiter"
                     className={cn(
                       buttonVariants({ size: "lg" }),
                       "bg-[#7c3aed] px-8 shadow-[0_0_30px_rgba(124,58,237,0.3)] hover:bg-[#6d28d9]",
                     )}
                   >
-                    Create a test
+                    Create recruiter trial
                     <ArrowRight className="ml-2 size-4" />
                   </Link>
                   <Link
-                    href="/login"
+                    href="/hire"
                     className="text-sm font-mono-ui text-[#94a3b8] hover:text-[#a78bfa]"
                   >
-                    Already have an account? Log in →
+                    View pricing and enterprise options →
                   </Link>
                 </div>
               </div>

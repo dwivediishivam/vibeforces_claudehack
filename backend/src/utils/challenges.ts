@@ -31,6 +31,7 @@ export function sanitizeChallenge(challenge: ChallengeRow) {
     case "token_golf":
       base.challenge_data = {
         target_description: challenge.challenge_data.target_description,
+        target_output: challenge.challenge_data.target_output,
         max_tokens_allowed: challenge.challenge_data.max_tokens_allowed,
       };
       break;

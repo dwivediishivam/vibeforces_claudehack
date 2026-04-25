@@ -11,6 +11,7 @@ import {
 import type { ChallengeRow } from "../types";
 import { ensureJsonObject } from "../utils/json";
 import {
+  executeBugFixPrompt,
   executeSpecToPrompt,
   executeTokenGolfPrompt,
   executeUIReproductionPrompt,
@@ -224,7 +225,26 @@ router.post(
         timeScore,
       });
     } else if (challenge.category === "bug_fix") {
+      const execution = await executeBugFixPrompt({
+        brokenCode: String(challenge.challenge_data.code ?? ""),
+        language: String(challenge.challenge_data.language ?? ""),
+        task: String(challenge.challenge_data.task ?? ""),
+        userPrompt: prompts[0]?.prompt ?? "",
+        provider,
+      });
+      const parsed = ensureJsonObject<Record<string, any>>(execution.content, {
+        fixed_code: execution.content,
+      });
+      const fixedCode = String(parsed.fixed_code ?? execution.content);
+      aiResponses = [
+        {
+          response: fixedCode,
+          token_count: execution.totalTokens,
+        },
+      ];
       judgeFeedback = await judgeBugFix({
+        brokenCode: String(challenge.challenge_data.code ?? ""),
+        aiFixedCode: fixedCode,
         actualBug: challenge.challenge_data.bug_description,
         bugLocation: challenge.challenge_data.bug_location,
         expectedFix: challenge.challenge_data.expected_fix,
