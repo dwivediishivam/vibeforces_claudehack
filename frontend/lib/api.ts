@@ -139,8 +139,8 @@ export const apiClient = {
       { token },
     );
   },
-  getContests() {
-    return request<{ contests: ContestRecord[] }>("/contests");
+  getContests(options?: { timeoutMs?: number; retries?: number }) {
+    return request<{ contests: ContestRecord[] }>("/contests", options);
   },
   getContest(id: string) {
     return request<{

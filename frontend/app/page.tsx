@@ -96,7 +96,7 @@ const audiences = [
 
 export default async function HomePage() {
   const contests = await apiClient
-    .getContests()
+    .getContests({ timeoutMs: 2500, retries: 0 })
     .then((response) => response.contests)
     .catch(() => []);
   const nextContest =
