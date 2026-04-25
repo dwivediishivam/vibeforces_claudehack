@@ -91,6 +91,8 @@ export interface AgentOrchestrationToolSpec {
 export interface AgentOrchestrationData {
   goal: string;
   eval_fixture_id: string;
+  /** Inline fixture or URL the agent fetches at run-time (raw JSON URL is fine). */
+  eval_fixture_payload?: string;
   required_tools: AgentOrchestrationToolSpec[];
   forbidden_tools?: string[];
   task_budget_tokens: number;

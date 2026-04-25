@@ -28,8 +28,8 @@ const distributedDebugChallenges: Array<ChallengeRecord<DistributedDebugData>> =
     description:
       "A two-service /listings API silently drops the last item on every page boundary. Drive an agent to reproduce, isolate, and patch it.",
     challenge_data: {
-      repo_url: "https://github.com/vibeforces-eval/listings-pager",
-      starter_branch: "bug/page-boundary",
+      repo_url: "https://github.com/dwivediishivam/vibeforces-eval-listings-pager",
+      starter_branch: "main",
       failing_test_path: "tests/regression/test_pagination.py::test_last_page_complete",
       scenario:
         "A frontend gateway service calls a Postgres-backed catalog service over gRPC. With 47 items and page_size=10, page 5 returns 6 items locally but only 5 in production. The integration test fails. Logs are clean — no exceptions.",
@@ -51,8 +51,8 @@ const distributedDebugChallenges: Array<ChallengeRecord<DistributedDebugData>> =
     description:
       "Every Monday 9:00 UTC the auth service's p99 spikes to 4s for 90 seconds, then recovers. Three services involved. Find it.",
     challenge_data: {
-      repo_url: "https://github.com/vibeforces-eval/auth-stampede",
-      starter_branch: "incident/monday-spike",
+      repo_url: "https://github.com/dwivediishivam/vibeforces-eval-auth-stampede",
+      starter_branch: "main",
       failing_test_path: "tests/load/test_cold_cache.py::test_p99_under_500ms",
       scenario:
         "Auth service caches JWT signing keys in Redis with TTL=7d. The KMS rotates keys weekly on Monday 9:00 UTC. When the Redis key expires, every in-flight request simultaneously tries to refetch from KMS, which rate-limits at 50 rps. The load test simulates 300 concurrent logins at the moment of TTL expiry.",
@@ -74,8 +74,8 @@ const distributedDebugChallenges: Array<ChallengeRecord<DistributedDebugData>> =
     description:
       "A payments service writes to Postgres, then publishes to Kafka, then a ledger service consumes and writes to a separate Postgres. Under load, ~0.3% of payments show as charged but never ledgered. Inbox/outbox? Idempotency? Both?",
     challenge_data: {
-      repo_url: "https://github.com/vibeforces-eval/dual-write-payments",
-      starter_branch: "incident/missing-ledger-rows",
+      repo_url: "https://github.com/dwivediishivam/vibeforces-eval-dual-write-payments",
+      starter_branch: "main",
       failing_test_path: "tests/chaos/test_partition_recovery.py::test_zero_lost_writes",
       scenario:
         "The chaos test injects a 3-second Kafka broker partition mid-transaction. After recovery, exactly-once is violated: payments_db has the charge, ledger_db is missing the row. The test does 5000 concurrent payments with 4 partition events. Current loss rate: ~15 rows. Target: 0.",
@@ -109,6 +109,7 @@ const systemDesignBuildChallenges: Array<ChallengeRecord<SystemDesignBuildData>>
         "5. Short codes must be 7 chars, base62, deterministic for a given (url, idempotency_key) pair.",
         "6. Provide pytest tests covering: idempotency, 404 path, metrics endpoint shape.",
       ].join("\n"),
+      starter_repo_url: "https://github.com/dwivediishivam/vibeforces-eval-url-shortener-starter",
       acceptance_tests_path: "tests/acceptance/",
       required_decision_points: ["short_code_strategy", "idempotency_storage"],
       load_probe_command: "wrk -t4 -c100 -d10s http://localhost:8000/abc1234",
@@ -136,6 +137,7 @@ const systemDesignBuildChallenges: Array<ChallengeRecord<SystemDesignBuildData>>
         "5. Provide a chaos test that kills `redis-0` mid-load and asserts no 5xx responses (fail-open).",
         "6. The service must handle 5000 rps on a single instance with p99 < 20ms.",
       ].join("\n"),
+      starter_repo_url: "https://github.com/dwivediishivam/vibeforces-eval-rate-limiter-starter",
       acceptance_tests_path: "tests/",
       required_decision_points: [
         "sliding_window_storage",
@@ -167,6 +169,7 @@ const systemDesignBuildChallenges: Array<ChallengeRecord<SystemDesignBuildData>>
         "5. Provide a `POST /admin/replay` endpoint that drops the materialized view and rebuilds it from the event log + snapshots. Replay of 1M events must complete in under 60s in the sandbox.",
         "6. Concurrency test: 200 concurrent ReserveStock for the same SKU with stock=10. Exactly 10 must succeed, 190 must 409. No double-reservations under any interleaving.",
       ].join("\n"),
+      starter_repo_url: "https://github.com/dwivediishivam/vibeforces-eval-event-sourced-inventory-starter",
       acceptance_tests_path: "tests/",
       required_decision_points: [
         "snapshot_storage_format",
@@ -195,6 +198,8 @@ const agentOrchestrationChallenges: Array<ChallengeRecord<AgentOrchestrationData
     challenge_data: {
       goal: "Given a stream of 50 issue payloads (title + body) delivered as user messages, the agent must classify each one and call file_issue exactly once per issue. Misclassifications and missed issues both lose points.",
       eval_fixture_id: "ao-e1-issues-v1",
+      eval_fixture_payload:
+        "https://raw.githubusercontent.com/dwivediishivam/vibeforces-eval-ao-issues-fixture/main/issues.json",
       required_tools: [
         {
           name: "file_issue",
@@ -232,6 +237,8 @@ const agentOrchestrationChallenges: Array<ChallengeRecord<AgentOrchestrationData
     challenge_data: {
       goal: "For each of 30 incoming issues, decide if it's a duplicate of any of 200 existing issues. The 200 existing issues are exposed via a `search_issues` tool (returns top-k by query). The agent must use semantic search wisely — calling search_issues with bad queries burns budget. Output via flag_duplicate(new_id, existing_id, similarity) or flag_unique(new_id).",
       eval_fixture_id: "ao-m1-dupes-v1",
+      eval_fixture_payload:
+        "https://raw.githubusercontent.com/dwivediishivam/vibeforces-eval-ao-dupes-fixture/main/incoming.json",
       required_tools: [
         {
           name: "search_issues",
@@ -291,6 +298,8 @@ const agentOrchestrationChallenges: Array<ChallengeRecord<AgentOrchestrationData
     challenge_data: {
       goal: "Given 7 days of events (PR merges, incidents, deploys, alerts — ~500 entries) delivered as a single mounted JSON file, produce a 5-section markdown digest: Highlights, Incidents, Shipped, Risks, Numbers. Each section has correctness rubrics. Submit via submit_digest. Subgoal tools (record_highlight, record_incident, etc.) provide intermediate scoring signal — they are how we know the agent's reasoning is grounded, not hallucinated.",
       eval_fixture_id: "ao-h1-firehose-v1",
+      eval_fixture_payload:
+        "https://raw.githubusercontent.com/dwivediishivam/vibeforces-eval-ao-firehose-fixture/main/events.json",
       required_tools: [
         {
           name: "record_highlight",
