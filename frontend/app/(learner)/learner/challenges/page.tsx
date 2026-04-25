@@ -65,11 +65,15 @@ export default function ChallengesPage() {
     });
   }, [category, challenges, difficulty, search]);
 
+  const categoryCount = useMemo(
+    () => new Set(challenges.map((c) => c.category)).size,
+    [challenges],
+  );
   const challengeCountLabel = loading
     ? "Loading challenge catalog"
     : error
       ? "Challenge catalog unavailable"
-      : `${challenges.length} challenges across 5 categories`;
+      : `${challenges.length} challenges across ${categoryCount} categories`;
 
   return (
     <div className="space-y-6">
