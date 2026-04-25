@@ -45,6 +45,17 @@ export function TopNav({
           <Button variant="ghost" size="icon" className="border border-transparent hover:border-[#1e293b]">
             <Bell className="size-4 text-[#94a3b8]" />
           </Button>
+          {auth.loading ? (
+            <div className="h-10 w-36 rounded-full border border-[#1e293b] bg-[#111827]" />
+          ) : !auth.isAuthenticated ? (
+            <Button
+              variant="ghost"
+              className="rounded-full border border-[#1e293b] bg-[#111827] px-4 text-[#cbd5e1]"
+              onClick={() => router.push("/login")}
+            >
+              Sign in
+            </Button>
+          ) : (
           <DropdownMenu>
             <DropdownMenuTrigger>
               <Button variant="ghost" className="gap-2 rounded-full border border-[#1e293b] bg-[#111827] px-3">
@@ -70,6 +81,7 @@ export function TopNav({
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          )}
         </div>
       </div>
     </header>

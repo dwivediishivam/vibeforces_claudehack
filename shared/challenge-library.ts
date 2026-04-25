@@ -1190,7 +1190,7 @@ const uiChallenges: Array<ChallengeRecord<UIReproductionData>> = [
 </head>
 <body>
   <div class="hero">
-    <div class="badge"><span>New</span> — Season 1 contests now live</div>
+    <div class="badge"><span>New</span> — AI workflow benchmark live</div>
     <h1>Train Your AI Instincts</h1>
     <p class="subtitle">The competitive platform for vibe coders. Master prompt engineering, debug AI output, and prove your skills on the leaderboard.</p>
     <div class="buttons">

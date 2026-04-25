@@ -46,8 +46,14 @@ export default function LoginPage() {
           .single();
 
         toast.success("Welcome back.");
+        const next =
+          typeof window === "undefined"
+            ? null
+            : new URLSearchParams(window.location.search).get("next");
         router.push(
-          profile?.role === "recruiter"
+          next?.startsWith("/") && !next.startsWith("//")
+            ? next
+            : profile?.role === "recruiter"
             ? "/recruiter/dashboard"
             : profile?.role === "admin"
               ? "/admin/dashboard"

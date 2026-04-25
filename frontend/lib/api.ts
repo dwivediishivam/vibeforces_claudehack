@@ -41,7 +41,14 @@ type RecruiterTestStats = {
 async function parseJson<T>(response: Response): Promise<T> {
   if (!response.ok) {
     const errorBody = await response.text();
-    throw new Error(errorBody || `Request failed with ${response.status}`);
+    let message = errorBody || `Request failed with ${response.status}`;
+    try {
+      const parsed = JSON.parse(errorBody) as { error?: string; message?: string };
+      message = parsed.error ?? parsed.message ?? message;
+    } catch {
+      // Keep the plain response body when the backend did not return JSON.
+    }
+    throw new Error(message);
   }
 
   return response.json() as Promise<T>;
@@ -74,7 +81,14 @@ async function request<T>(
         signal: controller.signal,
       });
       clearTimeout(timeout);
-      return parseJson<T>(response);
+
+      if (
+        response.ok ||
+        ![502, 503, 504].includes(response.status) ||
+        attempt === retries
+      ) {
+        return parseJson<T>(response);
+      }
     } catch {
       clearTimeout(timeout);
       if (attempt === retries) {
@@ -82,8 +96,9 @@ async function request<T>(
           "The VibeForces API is waking up or temporarily unavailable. Please retry in a few seconds.",
         );
       }
-      await new Promise((resolve) => setTimeout(resolve, 900));
     }
+
+    await new Promise((resolve) => setTimeout(resolve, 900));
   }
 
   throw new Error("The VibeForces API is temporarily unavailable.");
