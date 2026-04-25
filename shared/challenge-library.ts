@@ -407,12 +407,12 @@ const bugFixChallenges: Array<ChallengeRecord<BugFixData>> = [
     category: "bug_fix",
     difficulty: "easy",
     rating: 900,
-    title: "Off-by-One Binary Search",
-    description: "Identify the exact boundary bug in a Python binary search.",
+    title: "Binary Search Debugging",
+    description: "Inspect a short Python search function and write a precise repair prompt.",
     challenge_data: {
       code: String.raw`def binary_search(arr, target):
     left = 0
-    right = len(arr)  # BUG: should be len(arr) - 1
+    right = len(arr)
     while left <= right:
         mid = (left + right) // 2
         if arr[mid] == target:
@@ -438,15 +438,15 @@ const bugFixChallenges: Array<ChallengeRecord<BugFixData>> = [
     category: "bug_fix",
     difficulty: "easy",
     rating: 1000,
-    title: "Broken Fibonacci",
-    description: "Pinpoint the loop-condition bug in a JavaScript Fibonacci function.",
+    title: "Sequence Function Debugging",
+    description: "Inspect a short JavaScript numeric function and identify the logic error.",
     challenge_data: {
       code: String.raw`function fibonacci(n) {
   if (n <= 0) return 0;
   if (n === 1) return 1;
   
   let prev = 0, curr = 1;
-  for (let i = 2; i < n; i++) {  // BUG: should be i <= n
+  for (let i = 2; i < n; i++) {
     let temp = curr;
     curr = prev + curr;
     prev = temp;
@@ -469,8 +469,8 @@ const bugFixChallenges: Array<ChallengeRecord<BugFixData>> = [
     category: "bug_fix",
     difficulty: "medium",
     rating: 1300,
-    title: "Async Race Condition",
-    description: "Describe why a batch cache helper returns unresolved promises.",
+    title: "Async Helper Debugging",
+    description: "Review an asynchronous helper and prompt the AI toward the correct repair.",
     challenge_data: {
       code: String.raw`class UserCache {
   constructor() {
@@ -491,9 +491,9 @@ const bugFixChallenges: Array<ChallengeRecord<BugFixData>> = [
   async getUsers(ids) {
     const results = [];
     for (const id of ids) {
-      results.push(this.getUser(id));  // BUG: not awaited, pushes promises
+      results.push(this.getUser(id));
     }
-    return results;  // Returns array of promises, not users
+    return results;
   }
 }`,
       language: "javascript",
@@ -512,8 +512,8 @@ const bugFixChallenges: Array<ChallengeRecord<BugFixData>> = [
     category: "bug_fix",
     difficulty: "medium",
     rating: 1400,
-    title: "React State Mutation",
-    description: "Explain the direct-mutation bug that prevents React re-renders.",
+    title: "React Update Debugging",
+    description: "Inspect a React component with incorrect update behavior and write a targeted fix prompt.",
     challenge_data: {
       code: String.raw`import { useState } from 'react';
 
@@ -523,15 +523,15 @@ function TodoList() {
 
   const addTodo = () => {
     if (!input.trim()) return;
-    todos.push({ id: Date.now(), text: input, done: false });  // BUG: mutating state directly
-    setTodos(todos);  // BUG: same reference, React won't re-render
+    todos.push({ id: Date.now(), text: input, done: false });
+    setTodos(todos);
     setInput('');
   };
 
   const toggleTodo = (id) => {
     const todo = todos.find(t => t.id === id);
-    todo.done = !todo.done;  // BUG: mutating state directly
-    setTodos(todos);  // BUG: same reference
+    todo.done = !todo.done;
+    setTodos(todos);
   };
 
   return (
@@ -566,8 +566,8 @@ function TodoList() {
     category: "bug_fix",
     difficulty: "hard",
     rating: 1700,
-    title: "Memory Leak in Event Listener",
-    description: "Trace the reconnect and cleanup leaks in an event-stream wrapper.",
+    title: "Event Stream Debugging",
+    description: "Analyze a reconnecting stream wrapper and identify the lifecycle bug precisely.",
     challenge_data: {
       code: String.raw`class DataStream {
   constructor(url) {
@@ -601,7 +601,7 @@ function TodoList() {
     this.connection.onerror = (err) => {
       console.error('Connection error, reconnecting...');
       this.connection.close();
-      setTimeout(() => this.connect(), 5000);  // BUG: recursive reconnect without cleanup
+      setTimeout(() => this.connect(), 5000);
     };
   }
 
@@ -613,8 +613,6 @@ function TodoList() {
   disconnect() {
     if (this.connection) {
       this.connection.close();
-      // BUG: doesn't clear listeners or buffer
-      // BUG: doesn't prevent reconnect timeout from firing
     }
   }
 }`,
@@ -635,8 +633,8 @@ function TodoList() {
     category: "bug_fix",
     difficulty: "hard",
     rating: 1800,
-    title: "Deadlock in Promise Chain",
-    description: "Explain a two-resource deadlock caused by concurrent acquisition.",
+    title: "Concurrent Resource Debugging",
+    description: "Review concurrent resource-handling code and prompt for the safest repair.",
     challenge_data: {
       code: String.raw`class ResourcePool {
   constructor(size) {
@@ -667,7 +665,7 @@ async function processItems(pool, items) {
   const results = await Promise.all(
     items.map(async (item) => {
       const resource1 = await pool.acquire();
-      const resource2 = await pool.acquire();  // BUG: deadlock when items > pool size
+      const resource2 = await pool.acquire();
       
       try {
         const result = await doWork(resource1, resource2, item);

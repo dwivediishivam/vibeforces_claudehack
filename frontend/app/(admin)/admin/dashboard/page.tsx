@@ -82,7 +82,7 @@ export default function AdminDashboardPage() {
             Platform overview
           </h1>
           <p className="mt-2 text-sm text-[#94a3b8]">
-            Welcome back, {auth.displayName ?? "Admin"} — Season 1 is live.
+            Welcome back, {auth.displayName ?? "Admin"}. Monitor users, submissions, and contests from here.
           </p>
         </div>
         <Link

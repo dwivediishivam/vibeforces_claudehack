@@ -114,9 +114,11 @@ function formatTime(seconds: number) {
 
 export function ChallengeInsights({
   challengeId,
+  category,
   refreshKey = 0,
 }: {
   challengeId: string;
+  category?: string;
   refreshKey?: number;
 }) {
   const auth = useAuth();
@@ -124,6 +126,7 @@ export function ChallengeInsights({
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [expanded, setExpanded] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [compareMode, setCompareMode] = useState(false);
   const [compareIds, setCompareIds] = useState<string[]>([]);
 
@@ -131,18 +134,28 @@ export function ChallengeInsights({
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      apiClient.getChallengeLeaderboard(challengeId).catch(() => ({ leaderboard: [] })),
+      apiClient.getChallengeLeaderboard(challengeId),
       auth.session?.access_token
-        ? apiClient
-            .getChallengeSubmissions(challengeId, auth.session.access_token)
-            .catch(() => ({ submissions: [] }))
+        ? apiClient.getChallengeSubmissions(challengeId, auth.session.access_token)
         : Promise.resolve({ submissions: [] }),
-    ]).then(([lb, subs]) => {
-      if (cancelled) return;
-      setLeaderboard(lb.leaderboard as LeaderboardRow[]);
-      setSubmissions((subs.submissions ?? []) as SubmissionRow[]);
-      setLoading(false);
-    });
+    ])
+      .then(([lb, subs]) => {
+        if (cancelled) return;
+        setLeaderboard(lb.leaderboard as LeaderboardRow[]);
+        setSubmissions((subs.submissions ?? []) as SubmissionRow[]);
+        setError(null);
+      })
+      .catch((nextError) => {
+        if (cancelled) return;
+        setError(
+          nextError instanceof Error
+            ? nextError.message
+            : "Could not load problem analytics.",
+        );
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
     return () => {
       cancelled = true;
     };
@@ -177,6 +190,13 @@ export function ChallengeInsights({
     ).length,
   }));
   const maxBucket = Math.max(1, ...buckets.map((bucket) => bucket.count));
+  const showTokenEfficiency = category !== "architecture_pick";
+  const leaderboardColumns = showTokenEfficiency
+    ? "grid-cols-[40px_1fr_70px_70px_70px_80px]"
+    : "grid-cols-[40px_1fr_70px_70px_80px]";
+  const submissionColumns = showTokenEfficiency
+    ? "grid-cols-[1fr_70px_70px_70px_80px]"
+    : "grid-cols-[1fr_70px_70px_80px]";
 
   return (
     <Card className="surface-card rounded-2xl p-6">
@@ -190,9 +210,16 @@ export function ChallengeInsights({
           </h2>
         </div>
         <div className="text-xs text-[#64748b]">
-          Prompt tokens are scored against both a budget and peer attempts.
+          {showTokenEfficiency
+            ? "Prompt tokens are scored against both a budget and peer attempts."
+            : "Architecture-pick questions are scored on ranking correctness only."}
         </div>
       </div>
+      {error ? (
+        <div className="mb-4 rounded-xl border border-[#7f1d1d] bg-[#450a0a]/30 px-4 py-3 text-sm text-[#fca5a5]">
+          {error}
+        </div>
+      ) : null}
       {myPercentile !== null ? (
         <div className="mb-4 flex items-center justify-between rounded-xl border border-[#7c3aed]/30 bg-[#7c3aed]/5 px-4 py-3 text-sm">
           <div className="text-[#cbd5e1]">
@@ -248,18 +275,18 @@ export function ChallengeInsights({
             </div>
           ) : (
             <div className="space-y-1">
-              <div className="grid grid-cols-[40px_1fr_70px_70px_70px_80px] gap-3 px-3 py-2 text-[11px] uppercase tracking-[1.5px] text-[#64748b]">
+              <div className={`grid ${leaderboardColumns} gap-3 px-3 py-2 text-[11px] uppercase tracking-[1.5px] text-[#64748b]`}>
                 <div>#</div>
                 <div>User</div>
                 <div className="text-right">Score</div>
                 <div className="text-right">Acc</div>
-                <div className="text-right">Tok</div>
+                {showTokenEfficiency ? <div className="text-right">Tok</div> : null}
                 <div className="text-right">Time</div>
               </div>
               {leaderboard.slice(0, 25).map((row) => (
                 <div
                   key={row.user_id}
-                  className={`grid grid-cols-[40px_1fr_70px_70px_70px_80px] gap-3 rounded-lg px-3 py-2 text-sm ${
+                  className={`grid ${leaderboardColumns} gap-3 rounded-lg px-3 py-2 text-sm ${
                     row.user_id === currentUserId
                       ? "bg-[#7c3aed]/10 text-[#e9d5ff]"
                       : "text-[#cbd5e1]"
@@ -271,7 +298,9 @@ export function ChallengeInsights({
                     {row.combined_score.toFixed(1)}
                   </div>
                   <div className="text-right font-mono-ui">{row.accuracy_score.toFixed(1)}</div>
-                  <div className="text-right font-mono-ui">{Math.round(row.token_score)}</div>
+                  {showTokenEfficiency ? (
+                    <div className="text-right font-mono-ui">{Math.round(row.token_score)}</div>
+                  ) : null}
                   <div className="text-right font-mono-ui">{formatTime(row.time_taken_seconds)}</div>
                 </div>
               ))}
@@ -355,7 +384,7 @@ export function ChallengeInsights({
                         }
                         setExpanded(isOpen ? null : sub.id);
                       }}
-                      className="grid w-full grid-cols-[1fr_70px_70px_70px_80px] items-center gap-3 px-4 py-3 text-left text-sm text-[#cbd5e1] hover:bg-[#111827]"
+                      className={`grid w-full ${submissionColumns} items-center gap-3 px-4 py-3 text-left text-sm text-[#cbd5e1] hover:bg-[#111827]`}
                     >
                       <div className="text-xs text-[#64748b]">
                         {new Date(sub.created_at).toLocaleString()}
@@ -366,9 +395,11 @@ export function ChallengeInsights({
                       <div className="text-right font-mono-ui">
                         {Number(sub.accuracy_score).toFixed(1)}
                       </div>
-                      <div className="text-right font-mono-ui">
-                        {Math.round(Number(sub.token_score))}
-                      </div>
+                      {showTokenEfficiency ? (
+                        <div className="text-right font-mono-ui">
+                          {Math.round(Number(sub.token_score))}
+                        </div>
+                      ) : null}
                       <div className="text-right font-mono-ui">
                         {formatTime(Number(sub.time_taken_seconds))}
                       </div>

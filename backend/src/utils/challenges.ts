@@ -1,15 +1,51 @@
 import type { ChallengeRow } from "../types";
 import { instructionsFor } from "./challenge-instructions";
 
+const publicBugFixCopy: Record<string, { title: string; description: string }> = {
+  "BF-E1": {
+    title: "Binary Search Debugging",
+    description: "Inspect a short Python search function and write a precise repair prompt.",
+  },
+  "BF-E2": {
+    title: "Sequence Function Debugging",
+    description: "Inspect a short JavaScript numeric function and identify the logic error.",
+  },
+  "BF-M1": {
+    title: "Async Helper Debugging",
+    description: "Review an asynchronous helper and prompt the AI toward the correct repair.",
+  },
+  "BF-M2": {
+    title: "React Update Debugging",
+    description: "Inspect a React component with incorrect update behavior and write a targeted fix prompt.",
+  },
+  "BF-H1": {
+    title: "Event Stream Debugging",
+    description: "Analyze a reconnecting stream wrapper and identify the lifecycle bug precisely.",
+  },
+  "BF-H2": {
+    title: "Concurrent Resource Debugging",
+    description: "Review concurrent resource-handling code and prompt for the safest repair.",
+  },
+};
+
+function removeBugHints(code: string) {
+  return code
+    .replace(/\s*#\s*BUG:.*$/gm, "")
+    .replace(/\s*\/\/\s*BUG:.*$/gm, "")
+    .replace(/\s*\/\/\s*Returns array of promises, not users.*$/gm, "");
+}
+
 export function getChallengeSummary(challenge: ChallengeRow) {
+  const publicBugCopy = publicBugFixCopy[String(challenge.code ?? "")];
+
   return {
     id: challenge.id,
     code: challenge.code,
     category: challenge.category,
     difficulty: challenge.difficulty,
     rating: challenge.rating,
-    title: challenge.title,
-    description: challenge.description,
+    title: publicBugCopy?.title ?? challenge.title,
+    description: publicBugCopy?.description ?? challenge.description,
     instructions: instructionsFor(String(challenge.code ?? "")),
   };
 }
@@ -37,9 +73,10 @@ export function sanitizeChallenge(challenge: ChallengeRow) {
       break;
     case "bug_fix":
       base.challenge_data = {
-        code: challenge.challenge_data.code,
+        code: removeBugHints(String(challenge.challenge_data.code ?? "")),
         language: challenge.challenge_data.language,
-        task: challenge.challenge_data.task,
+        task:
+          "Read the code and write a prompt that tells the AI what to fix. Do not ask for a broad rewrite; identify the failing behavior, likely location, and repair direction from the code.",
       };
       break;
     case "architecture_pick":

@@ -34,7 +34,7 @@ export default async function ContestsPage() {
         </div>
         {upcoming.length === 0 ? (
           <Card className="surface-card rounded-2xl p-10 text-center text-sm text-[#94a3b8]">
-            No contests scheduled yet. Stay tuned — Season 1 drops soon.
+            No contests scheduled yet. New public arenas will appear here when they open.
           </Card>
         ) : null}
         {upcoming.map((contest) => (
@@ -47,7 +47,7 @@ export default async function ContestsPage() {
               <div className="max-w-2xl">
                 <div className="inline-flex items-center gap-2 rounded-full border border-[#7c3aed]/30 bg-[#7c3aed]/10 px-3 py-1 text-xs font-mono-ui text-[#a78bfa]">
                   <Flame className="size-3.5" />
-                  Live Season 1
+                  Public contest
                 </div>
                 <div className="mt-4 font-mono-ui text-2xl font-bold text-[#f1f5f9] md:text-3xl">
                   {contest.title}
@@ -131,7 +131,7 @@ export default async function ContestsPage() {
               No past contests yet
             </div>
             <div className="mt-2 text-xs text-[#64748b]">
-              Season 1 is the inaugural season. The archive begins soon.
+              Completed contest results will appear here.
             </div>
           </Card>
         </section>

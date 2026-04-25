@@ -43,6 +43,7 @@ export function ScoreDisplay({
   nextHref,
   percentiles,
   ratingChange,
+  showTokenEfficiency = true,
 }: {
   accuracy: number;
   tokenScore: number;
@@ -57,6 +58,7 @@ export function ScoreDisplay({
     combined?: number | null;
   };
   ratingChange?: { before: number; after: number; delta: number } | null;
+  showTokenEfficiency?: boolean;
 }) {
   const cards = [
     {
@@ -65,12 +67,16 @@ export function ScoreDisplay({
       suffix: "/10",
       percentile: percentiles?.accuracy ?? null,
     },
-    {
-      label: "Token Eff.",
-      value: tokenScore,
-      suffix: "%",
-      percentile: percentiles?.token ?? null,
-    },
+    ...(showTokenEfficiency
+      ? [
+          {
+            label: "Token Eff.",
+            value: tokenScore,
+            suffix: "%",
+            percentile: percentiles?.token ?? null,
+          },
+        ]
+      : []),
     {
       label: "Time",
       value: Number(timeLabel.replace(/[^\d.]/g, "")),

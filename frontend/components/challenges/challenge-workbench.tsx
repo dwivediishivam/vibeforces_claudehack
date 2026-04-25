@@ -67,6 +67,7 @@ export function ChallengeWorkbench({
   const [activeTab, setActiveTab] = useState("plan");
   const [startedAt, setStartedAt] = useState(() => Date.now());
   const [resetKey, setResetKey] = useState(0);
+  const [analyticsRefreshKey, setAnalyticsRefreshKey] = useState(0);
   const [model, setModel] = useState<"openai" | "anthropic">("openai");
 
   function handleTryAgain() {
@@ -134,6 +135,7 @@ export function ChallengeWorkbench({
 
     const entry = response.submission as any;
     onSubmissionComplete?.(entry);
+    setAnalyticsRefreshKey((key) => key + 1);
     setSubmission({
       accuracy: Number(entry.accuracy_score ?? 0),
       tokenScore: Number(entry.token_score ?? 0),
@@ -466,6 +468,7 @@ export function ChallengeWorkbench({
               feedback={submission.feedback}
               percentiles={submission.percentiles}
               ratingChange={submission.ratingChange}
+              showTokenEfficiency={challenge.category !== "architecture_pick"}
               onTryAgain={handleTryAgain}
               nextHref={nextChallengeHref}
             />
@@ -517,7 +520,11 @@ export function ChallengeWorkbench({
       ) : null}
 
       {contextType === "practice" ? (
-        <ChallengeInsights challengeId={challenge.id} refreshKey={resetKey} />
+        <ChallengeInsights
+          challengeId={challenge.id}
+          category={challenge.category}
+          refreshKey={resetKey + analyticsRefreshKey}
+        />
       ) : null}
 
       {showProctoring ? <ProctoringBanner /> : null}
