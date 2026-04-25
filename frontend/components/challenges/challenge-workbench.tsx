@@ -333,16 +333,10 @@ export function ChallengeWorkbench({
         <div className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
           <Card className="surface-card rounded-2xl p-6">
             <div className="mb-4 font-mono-ui text-lg text-[#f1f5f9]">
-              Reference behavior
-            </div>
-            <div className="text-sm leading-7 text-[#cbd5e1]">
-              {String(data.target_description)}
+              Code to replicate
             </div>
             {data.target_output ? (
-              <div className="mt-5">
-                <div className="mb-2 text-xs uppercase tracking-[2px] text-[#64748b]">
-                  Code to replicate functionally
-                </div>
+              <div>
                 <CodeDisplay
                   code={String(data.target_output)}
                   language={String(data.target_output).includes("function") ? "javascript" : "python"}
@@ -350,9 +344,6 @@ export function ChallengeWorkbench({
                 />
               </div>
             ) : null}
-            <div className="mt-4 rounded-xl border border-[#1e293b] bg-[#0a0f1e] p-3 text-xs text-[#94a3b8]">
-              Token budget: <span className="font-mono-ui text-[#a78bfa]">{String(data.max_tokens_allowed)}</span>. Write the shortest prompt that makes the AI produce code with the same behavior. Exact text does not matter; functional equivalence does.
-            </div>
           </Card>
           <div className="space-y-6">
             <PromptEditor

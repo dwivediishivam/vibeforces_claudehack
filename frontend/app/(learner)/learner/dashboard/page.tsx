@@ -27,7 +27,7 @@ type SubmissionRow = {
 export default function LearnerDashboardPage() {
   const auth = useAuth();
   const [contestBanner, setContestBanner] = useState<ContestRecord | null>(null);
-  const [challengeSnapshot, setChallengeSnapshot] = useState<ChallengeRecord[]>([]);
+  const [challenges, setChallenges] = useState<ChallengeRecord[]>([]);
   const [submissions, setSubmissions] = useState<SubmissionRow[]>([]);
   const [rank, setRank] = useState<number | null>(null);
 
@@ -46,7 +46,7 @@ export default function LearnerDashboardPage() {
           contestsResponse.contests.find((contest) => contest.status !== "completed") ??
             null,
         );
-        setChallengeSnapshot(challengesResponse.challenges.slice(0, 4));
+        setChallenges(challengesResponse.challenges);
 
         const currentUserEntry = leaderboardResponse.leaderboard.find(
           (entry) => entry.user_id === auth.session?.user.id,
@@ -77,24 +77,39 @@ export default function LearnerDashboardPage() {
       0,
     );
     const solvedSet = new Set(submissions.map((submission) => submission.challenge_id));
-    const categoryProgress = {
+    const emptyCategoryCounts = {
       spec_to_prompt: 0,
       token_golf: 0,
       bug_fix: 0,
       architecture_pick: 0,
       ui_reproduction: 0,
     } as Record<keyof typeof categoryLabels, number>;
+    const categoryTotals = { ...emptyCategoryCounts };
+    const solvedByCategory = Object.fromEntries(
+      Object.keys(emptyCategoryCounts).map((category) => [category, new Set<string>()]),
+    ) as Record<keyof typeof categoryLabels, Set<string>>;
 
+    for (const challenge of challenges) {
+      const category = challenge.category as keyof typeof categoryLabels;
+      if (category in categoryTotals) categoryTotals[category] += 1;
+    }
     for (const submission of submissions) {
       const category = submission.challenges?.category;
-      if (category && category in categoryProgress) {
-        categoryProgress[category] += 1;
+      if (category && category in solvedByCategory) {
+        solvedByCategory[category].add(submission.challenge_id);
       }
     }
+    const categoryProgress = Object.fromEntries(
+      Object.entries(solvedByCategory).map(([category, solved]) => [
+        category,
+        Math.min(solved.size, categoryTotals[category as keyof typeof categoryLabels] || solved.size),
+      ]),
+    ) as Record<keyof typeof categoryLabels, number>;
 
     return {
       totalScore,
       solved: solvedSet.size,
+      totalChallenges: challenges.length || 30,
       rank,
       recentSubmissions: submissions.slice(0, 3).map((submission) => ({
         id: submission.id,
@@ -109,8 +124,9 @@ export default function LearnerDashboardPage() {
           : "Recently",
       })),
       categoryProgress,
+      categoryTotals,
     };
-  }, [rank, submissions]);
+  }, [challenges, rank, submissions]);
 
   return (
     <div className="space-y-8">
@@ -170,7 +186,7 @@ export default function LearnerDashboardPage() {
 
       <div className="grid gap-4 md:grid-cols-3">
         <StatCard label="Score" value={derived.totalScore.toLocaleString()} />
-        <StatCard label="Solved" value={`${derived.solved}/30`} accent="green" />
+        <StatCard label="Solved" value={`${derived.solved}/${derived.totalChallenges}`} accent="green" />
         <StatCard
           label="Rank"
           value={derived.rank ? `#${derived.rank}` : "—"}
@@ -214,18 +230,21 @@ export default function LearnerDashboardPage() {
             Category Progress
           </div>
           <div className="mt-4 space-y-5">
-            {Object.entries(derived.categoryProgress).map(([category, solved]) => (
-              <div key={category}>
-                <div className="mb-2 flex items-center justify-between text-sm text-[#cbd5e1]">
-                  <span>{categoryLabels[category as keyof typeof categoryLabels]}</span>
-                  <span className="font-mono-ui text-xs text-[#64748b]">{solved}/6</span>
+            {Object.entries(derived.categoryProgress).map(([category, solved]) => {
+              const total = derived.categoryTotals[category as keyof typeof categoryLabels] || 6;
+              return (
+                <div key={category}>
+                  <div className="mb-2 flex items-center justify-between text-sm text-[#cbd5e1]">
+                    <span>{categoryLabels[category as keyof typeof categoryLabels]}</span>
+                    <span className="font-mono-ui text-xs text-[#64748b]">{solved}/{total}</span>
+                  </div>
+                  <Progress
+                    value={(solved / total) * 100}
+                    className="h-2 bg-[#1e293b]"
+                  />
                 </div>
-                <Progress
-                  value={(solved / 6) * 100}
-                  className="h-2 bg-[#1e293b]"
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </Card>
       </div>
@@ -235,7 +254,7 @@ export default function LearnerDashboardPage() {
           Challenge Snapshot
         </div>
         <div className="mt-4 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-          {challengeSnapshot.map((challenge) => (
+          {challenges.slice(0, 4).map((challenge) => (
             <div key={challenge.id} className="rounded-2xl border border-[#1e293b] bg-[#0a0f1e] p-4">
               <div className="text-xs font-mono-ui uppercase text-[#64748b]">{challenge.code}</div>
               <div className="mt-2 font-mono-ui text-[#f1f5f9]">{challenge.title}</div>
