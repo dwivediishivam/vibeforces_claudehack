@@ -22,9 +22,9 @@ function validateRating(
   errors: string[],
 ) {
   const ranges = {
-    easy: [800, 1200],
-    medium: [1200, 1600],
-    hard: [1600, 2500],
+    easy: [800, 1600],
+    medium: [1200, 2000],
+    hard: [1600, 2800],
   } as const;
 
   const [min, max] = ranges[difficulty];
@@ -136,6 +136,80 @@ function validateChallenge(challenge: ChallengeRecord, errors: string[]) {
         errors,
       );
       break;
+    case "distributed_debug":
+      for (const key of [
+        "repo_url",
+        "starter_branch",
+        "failing_test_path",
+        "scenario",
+        "hidden_root_cause",
+        "rubric",
+      ]) {
+        assert(
+          Boolean(challenge.challenge_data[key]),
+          `${challenge.code}: missing ${key}.`,
+          errors,
+        );
+      }
+      assert(
+        Number(challenge.challenge_data.task_budget_tokens) >= 20000,
+        `${challenge.code}: task_budget_tokens must be >= 20000 (Anthropic minimum).`,
+        errors,
+      );
+      break;
+    case "system_design_build":
+      for (const key of ["spec", "acceptance_tests_path", "rubric"]) {
+        assert(
+          Boolean(challenge.challenge_data[key]),
+          `${challenge.code}: missing ${key}.`,
+          errors,
+        );
+      }
+      assert(
+        Array.isArray(challenge.challenge_data.required_decision_points) &&
+          challenge.challenge_data.required_decision_points.length > 0,
+        `${challenge.code}: required_decision_points must be a non-empty array.`,
+        errors,
+      );
+      assert(
+        Number(challenge.challenge_data.task_budget_tokens) >= 20000,
+        `${challenge.code}: task_budget_tokens must be >= 20000.`,
+        errors,
+      );
+      break;
+    case "agent_orchestration":
+      for (const key of ["goal", "eval_fixture_id", "rubric"]) {
+        assert(
+          Boolean(challenge.challenge_data[key]),
+          `${challenge.code}: missing ${key}.`,
+          errors,
+        );
+      }
+      assert(
+        Array.isArray(challenge.challenge_data.required_tools) &&
+          challenge.challenge_data.required_tools.length > 0,
+        `${challenge.code}: required_tools must be a non-empty array.`,
+        errors,
+      );
+      assert(
+        challenge.challenge_data.required_tools.some(
+          (t: any) => t.scoring_role === "subgoal",
+        ),
+        `${challenge.code}: at least one required_tool must have scoring_role 'subgoal'.`,
+        errors,
+      );
+      assert(
+        Number(challenge.challenge_data.task_budget_tokens) >= 20000,
+        `${challenge.code}: task_budget_tokens must be >= 20000.`,
+        errors,
+      );
+      assert(
+        Number(challenge.challenge_data.pass_threshold) > 0 &&
+          Number(challenge.challenge_data.pass_threshold) <= 1,
+        `${challenge.code}: pass_threshold must be in (0, 1].`,
+        errors,
+      );
+      break;
     case "ui_reproduction":
       assert(
         Boolean(challenge.challenge_data.target_screenshot_url),
@@ -162,7 +236,7 @@ function validateChallenge(challenge: ChallengeRecord, errors: string[]) {
 function main() {
   const errors: string[] = [];
 
-  assert(challengeLibrary.length === 30, `Expected 30 challenges, found ${challengeLibrary.length}.`, errors);
+  assert(challengeLibrary.length === 39, `Expected 39 challenges, found ${challengeLibrary.length}.`, errors);
 
   const ids = new Set<string>();
   const codes = new Set<string>();
@@ -179,18 +253,23 @@ function main() {
     distribution.set(key, (distribution.get(key) ?? 0) + 1);
   }
 
-  for (const category of [
-    "spec_to_prompt",
-    "token_golf",
-    "bug_fix",
-    "architecture_pick",
-    "ui_reproduction",
-  ]) {
+  const expectedPerDifficulty: Record<string, number> = {
+    spec_to_prompt: 2,
+    token_golf: 2,
+    bug_fix: 2,
+    architecture_pick: 2,
+    ui_reproduction: 2,
+    distributed_debug: 1,
+    system_design_build: 1,
+    agent_orchestration: 1,
+  };
+
+  for (const [category, perDifficulty] of Object.entries(expectedPerDifficulty)) {
     for (const difficulty of ["easy", "medium", "hard"]) {
       const count = distribution.get(`${category}:${difficulty}`) ?? 0;
       assert(
-        count === 2,
-        `Expected 2 ${difficulty} challenges in ${category}, found ${count}.`,
+        count === perDifficulty,
+        `Expected ${perDifficulty} ${difficulty} challenge(s) in ${category}, found ${count}.`,
         errors,
       );
     }
@@ -204,7 +283,7 @@ function main() {
     process.exit(1);
   }
 
-  process.stdout.write("Challenge validation passed for all 30 challenges.\n");
+  process.stdout.write(`Challenge validation passed for all ${challengeLibrary.length} challenges.\n`);
 }
 
 main();

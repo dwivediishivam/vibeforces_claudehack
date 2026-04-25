@@ -18,6 +18,9 @@ export const categoryLabels = {
   bug_fix: "Bug Fix",
   architecture_pick: "Architecture Pick",
   ui_reproduction: "UI Reproduction",
+  distributed_debug: "Distributed Debug",
+  system_design_build: "System Build",
+  agent_orchestration: "Agent Orchestration",
 } as const;
 
 export const difficultyLabels = {

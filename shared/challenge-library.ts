@@ -1357,12 +1357,15 @@ const uiChallenges: Array<ChallengeRecord<UIReproductionData>> = [
   },
 ];
 
+import { sde2Challenges } from "./challenge-library-sde2";
+
 export const challengeLibrary: ChallengeRecord[] = [
   ...specChallenges,
   ...tokenGolfChallenges,
   ...bugFixChallenges,
   ...architectureChallenges,
   ...uiChallenges,
+  ...sde2Challenges,
 ];
 
 export const challengeSummaryCards = challengeLibrary.map((challenge) => ({

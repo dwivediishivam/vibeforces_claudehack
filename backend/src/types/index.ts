@@ -5,7 +5,10 @@ export type ChallengeCategory =
   | "token_golf"
   | "bug_fix"
   | "architecture_pick"
-  | "ui_reproduction";
+  | "ui_reproduction"
+  | "distributed_debug"
+  | "system_design_build"
+  | "agent_orchestration";
 
 export type ChallengeDifficulty = "easy" | "medium" | "hard";
 

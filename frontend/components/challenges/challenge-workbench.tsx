@@ -62,6 +62,8 @@ export function ChallengeWorkbench({
   const [planPrompt, setPlanPrompt] = useState("");
   const [actPrompt, setActPrompt] = useState("");
   const [ranking, setRanking] = useState<Record<string, string>>({});
+  const [sde2Prompt, setSde2Prompt] = useState("");
+  const [orchestrationJson, setOrchestrationJson] = useState("");
   const [submission, setSubmission] = useState<SubmissionView | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState("plan");
@@ -76,6 +78,8 @@ export function ChallengeWorkbench({
     setPlanPrompt("");
     setActPrompt("");
     setRanking({});
+    setSde2Prompt("");
+    setOrchestrationJson("");
     setActiveTab("plan");
     setStartedAt(Date.now());
     setResetKey((n) => n + 1);
@@ -86,13 +90,19 @@ export function ChallengeWorkbench({
       ? ((challenge.challenge_data as any).prompt_mode as "single" | "plan_act")
       : "single";
 
+  const isSde2 =
+    challenge.category === "distributed_debug" ||
+    challenge.category === "system_design_build" ||
+    challenge.category === "agent_orchestration";
+
   const preparedPrompts = useMemo(() => {
     if (challenge.category === "architecture_pick") return [];
+    if (isSde2) return [sde2Prompt].filter(Boolean);
     if (promptMode === "plan_act") {
       return [planPrompt, actPrompt].filter(Boolean);
     }
     return [singlePrompt].filter(Boolean);
-  }, [actPrompt, challenge.category, planPrompt, promptMode, singlePrompt]);
+  }, [actPrompt, challenge.category, isSde2, planPrompt, promptMode, sde2Prompt, singlePrompt]);
 
   useEffect(() => {
     setStartedAt(Date.now());
@@ -112,10 +122,31 @@ export function ChallengeWorkbench({
       throw new Error("Sign in is required to submit and score a challenge.");
     }
 
+    let orchestrationSubmission: unknown = undefined;
+    if (challenge.category === "agent_orchestration") {
+      const trimmed = orchestrationJson.trim();
+      if (trimmed) {
+        try {
+          const parsed = JSON.parse(trimmed);
+          orchestrationSubmission = {
+            system_prompt: resolvedPrompts[0] ?? "",
+            ...parsed,
+          };
+        } catch {
+          throw new Error(
+            "Orchestration submission is not valid JSON. Provide an object with optional custom_tools_extra and task_budget_override.",
+          );
+        }
+      } else {
+        orchestrationSubmission = { system_prompt: resolvedPrompts[0] ?? "" };
+      }
+    }
+
     const response = (await apiClient.createSubmission(
       {
         challenge_id: challenge.id,
         prompts,
+        orchestration_submission: orchestrationSubmission,
         user_ranking:
           challenge.category === "architecture_pick"
             ? Object.entries(ranking)
@@ -176,13 +207,15 @@ export function ChallengeWorkbench({
     const resolvedPrompts =
       challenge.category === "architecture_pick"
         ? []
-        : promptMode === "plan_act"
-          ? [override?.plan ?? planPrompt, override?.act ?? actPrompt]
-              .map((value) => value.trim())
-              .filter(Boolean)
-          : [override?.single ?? singlePrompt]
-              .map((value) => value.trim())
-              .filter(Boolean);
+        : isSde2
+          ? [override?.single ?? sde2Prompt].map((v) => v.trim()).filter(Boolean)
+          : promptMode === "plan_act"
+            ? [override?.plan ?? planPrompt, override?.act ?? actPrompt]
+                .map((value) => value.trim())
+                .filter(Boolean)
+            : [override?.single ?? singlePrompt]
+                .map((value) => value.trim())
+                .filter(Boolean);
 
     if (challenge.category !== "architecture_pick" && resolvedPrompts.length === 0) {
       toast.error("Write a prompt before submitting.");
@@ -492,6 +525,141 @@ export function ChallengeWorkbench({
             />
             {submission?.aiResponses[0] ? (
               <AIResponseDisplay title="Generated HTML" content={submission.aiResponses[0]} language="html" />
+            ) : null}
+            {submission ? (
+              <ScoreDisplay
+                accuracy={submission.accuracy}
+                tokenScore={submission.tokenScore}
+                timeLabel={submission.timeLabel}
+                combinedScore={submission.combinedScore}
+                feedback={submission.feedback}
+                percentiles={submission.percentiles}
+                ratingChange={submission.ratingChange}
+                onTryAgain={handleTryAgain}
+                nextHref={nextChallengeHref}
+              />
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+
+      {isSde2 ? (
+        <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+          <Card className="surface-card rounded-2xl p-6">
+            <div className="mb-4 font-mono-ui text-lg text-[#f1f5f9]">
+              {challenge.category === "distributed_debug"
+                ? "Scenario & failing test"
+                : challenge.category === "system_design_build"
+                  ? "Spec & required decisions"
+                  : "Goal & registered tools"}
+            </div>
+            <div className="space-y-4 text-sm leading-7 text-[#cbd5e1]">
+              {challenge.category === "distributed_debug" ? (
+                <>
+                  <p className="whitespace-pre-wrap">{String(data.scenario ?? "")}</p>
+                  <div className="rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs text-[#f59e0b]">
+                    Failing test: {String(data.failing_test_path ?? "")}
+                  </div>
+                </>
+              ) : null}
+              {challenge.category === "system_design_build" ? (
+                <>
+                  <p className="whitespace-pre-wrap">{String(data.spec ?? "")}</p>
+                  <div className="rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 text-xs">
+                    <div className="mb-1 text-[#a78bfa]">Required decision points</div>
+                    <ul className="list-disc pl-5 text-[#cbd5e1]">
+                      {(data.required_decision_points ?? []).map((p: string) => (
+                        <li key={p}>{p}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </>
+              ) : null}
+              {challenge.category === "agent_orchestration" ? (
+                <>
+                  <p className="whitespace-pre-wrap">{String(data.goal ?? "")}</p>
+                  <div className="rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 text-xs">
+                    <div className="mb-1 text-[#a78bfa]">Registered tools</div>
+                    <ul className="list-disc pl-5 text-[#cbd5e1]">
+                      {(data.required_tools ?? []).map((t: any) => (
+                        <li key={t.name}>
+                          <span className="font-mono text-[#34d399]">{t.name}</span>
+                          {" — "}
+                          <span className="text-[#94a3b8]">{t.scoring_role}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                  {Array.isArray(data.forbidden_tools) && data.forbidden_tools.length > 0 ? (
+                    <div className="rounded-lg border border-[#7c3aed]/40 bg-[#7c3aed]/10 p-3 text-xs text-[#ddd6fe]">
+                      Forbidden: {(data.forbidden_tools as string[]).join(", ")}
+                    </div>
+                  ) : null}
+                </>
+              ) : null}
+              <div className="rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 text-xs text-[#94a3b8]">
+                Task budget: {Number(data.task_budget_tokens ?? 0).toLocaleString()} tokens
+              </div>
+            </div>
+          </Card>
+
+          <div className="space-y-4">
+            <Card className="surface-card rounded-2xl p-6">
+              <label className="mb-2 block font-mono-ui text-sm text-[#f1f5f9]">
+                {challenge.category === "agent_orchestration"
+                  ? "Agent system prompt"
+                  : "Your prompt for the agent"}
+              </label>
+              <textarea
+                key={`sde2-${resetKey}`}
+                value={sde2Prompt}
+                onChange={(e) => setSde2Prompt(e.target.value)}
+                disabled={disabled || submitting}
+                rows={12}
+                placeholder={
+                  challenge.category === "distributed_debug"
+                    ? "Describe how the agent should reproduce, isolate, and patch. Hint: tell it to run the failing test first."
+                    : challenge.category === "system_design_build"
+                      ? "Describe what to build, in what order, and which decisions to log. The agent has bash, write, edit, read tools."
+                      : "Define your agent's behavior. It will be invoked against the eval fixture and graded on subgoal-tool calls."
+                }
+                className="w-full rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs leading-6 text-[#f1f5f9] focus:border-[#a78bfa] focus:outline-none"
+              />
+            </Card>
+
+            {challenge.category === "agent_orchestration" ? (
+              <Card className="surface-card rounded-2xl p-6">
+                <label className="mb-2 block font-mono-ui text-sm text-[#f1f5f9]">
+                  Extra config (JSON, optional)
+                </label>
+                <p className="mb-2 text-xs text-[#94a3b8]">
+                  Add <code>custom_tools_extra</code> or override <code>task_budget_override</code>.
+                  Leave blank to use only the registered tools.
+                </p>
+                <textarea
+                  value={orchestrationJson}
+                  onChange={(e) => setOrchestrationJson(e.target.value)}
+                  disabled={disabled || submitting}
+                  rows={6}
+                  placeholder={`{\n  "custom_tools_extra": [],\n  "task_budget_override": 80000\n}`}
+                  className="w-full rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs leading-6 text-[#f1f5f9] focus:border-[#a78bfa] focus:outline-none"
+                />
+              </Card>
+            ) : null}
+
+            <Button
+              onClick={() => void handleSubmit({ single: sde2Prompt })}
+              disabled={disabled || submitting || !sde2Prompt.trim()}
+              className="w-full"
+            >
+              {submitting ? "Running agent..." : "Run agent & submit"}
+            </Button>
+
+            {submission?.aiResponses[0] ? (
+              <AIResponseDisplay
+                title="Agent final output"
+                content={submission.aiResponses.join("\n\n")}
+              />
             ) : null}
             {submission ? (
               <ScoreDisplay

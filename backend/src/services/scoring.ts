@@ -9,6 +9,11 @@ const WEIGHTS: Record<
   bug_fix: { accuracy: 0.7, token: 0.1, time: 0.2 },
   architecture_pick: { accuracy: 1, token: 0, time: 0 },
   ui_reproduction: { accuracy: 0.5, token: 0.3, time: 0.2 },
+  // SDE2+ categories: token here means "task-budget efficiency", not prompt
+  // tokens. Time is irrelevant for async agent runs.
+  distributed_debug: { accuracy: 0.7, token: 0.2, time: 0.1 },
+  system_design_build: { accuracy: 0.75, token: 0.15, time: 0.1 },
+  agent_orchestration: { accuracy: 0.8, token: 0.2, time: 0 },
 };
 
 export function normalizeAccuracy(rawScore: number) {

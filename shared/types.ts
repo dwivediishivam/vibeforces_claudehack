@@ -5,7 +5,10 @@ export type ChallengeCategory =
   | "token_golf"
   | "bug_fix"
   | "architecture_pick"
-  | "ui_reproduction";
+  | "ui_reproduction"
+  | "distributed_debug"
+  | "system_design_build"
+  | "agent_orchestration";
 
 export type ChallengeDifficulty = "easy" | "medium" | "hard";
 
@@ -57,12 +60,54 @@ export interface UIReproductionData {
   rubric: string;
 }
 
+export interface DistributedDebugData {
+  repo_url: string;
+  starter_branch: string;
+  failing_test_path: string;
+  scenario: string;
+  hidden_root_cause: string;
+  par_tool_calls: number;
+  task_budget_tokens: number;
+  rubric: string;
+}
+
+export interface SystemDesignBuildData {
+  spec: string;
+  starter_repo_url?: string;
+  acceptance_tests_path: string;
+  required_decision_points: string[];
+  load_probe_command?: string;
+  task_budget_tokens: number;
+  rubric: string;
+}
+
+export interface AgentOrchestrationToolSpec {
+  name: string;
+  description: string;
+  input_schema: Record<string, unknown>;
+  scoring_role: "subgoal" | "side_effect" | "final_output";
+}
+
+export interface AgentOrchestrationData {
+  goal: string;
+  eval_fixture_id: string;
+  required_tools: AgentOrchestrationToolSpec[];
+  forbidden_tools?: string[];
+  task_budget_tokens: number;
+  perturbation_count: number;
+  pass_threshold: number;
+  rubric: string;
+}
+
 export type ChallengeData =
   | SpecToPromptData
   | TokenGolfData
   | BugFixData
   | ArchitecturePickData
-  | UIReproductionData;
+  | UIReproductionData
+  | DistributedDebugData
+  | SystemDesignBuildData
+  | AgentOrchestrationData;
 
 export interface ChallengeRecord<T extends ChallengeData = ChallengeData> {
   id: string;

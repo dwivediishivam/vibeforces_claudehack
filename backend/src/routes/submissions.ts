@@ -23,6 +23,17 @@ import {
   judgeUIReproduction,
 } from "../services/ai/judge";
 import {
+  executeAgentOrchestration,
+  executeDistributedDebug,
+  executeSystemDesignBuild,
+} from "../services/ai/sde2Runner";
+import {
+  judgeAgentOrchestration,
+  judgeDistributedDebug,
+  judgeSystemDesignBuild,
+  summarizeToolCalls,
+} from "../services/ai/sde2Judges";
+import {
   computeCombinedScore,
   computePromptEfficiencyScore,
   computeTimeScore,
@@ -38,10 +49,44 @@ import { applyRatingChange } from "../services/rating";
 
 const router = Router();
 
+function budgetEfficiencyScore(signals: Record<string, unknown>): number {
+  const consumed = Number(signals.tokens_consumed ?? 0);
+  const budget = Number(signals.task_budget ?? 0);
+  if (!budget) return 100;
+  const ratio = consumed / budget;
+  if (ratio <= 0.5) return 100;
+  if (ratio >= 1.25) return 0;
+  return Math.round(100 - ((ratio - 0.5) / 0.75) * 100);
+}
+
+const SDE2_CATEGORIES = new Set([
+  "distributed_debug",
+  "system_design_build",
+  "agent_orchestration",
+]);
+
+const SDE2_ENABLED = String(process.env.VIBEFORCES_SDE2_ENABLED ?? "false").toLowerCase() === "true";
+
 const promptSchema = z.object({
   prompt: z.string().min(1),
   token_count: z.number().int().nonnegative().optional(),
 });
+
+const orchestrationSubmissionSchema = z
+  .object({
+    system_prompt: z.string().min(1),
+    custom_tools_extra: z
+      .array(
+        z.object({
+          name: z.string(),
+          description: z.string(),
+          input_schema: z.record(z.string(), z.unknown()),
+        }),
+      )
+      .optional(),
+    task_budget_override: z.number().int().positive().optional(),
+  })
+  .optional();
 
 const submissionSchema = z.object({
   challenge_id: z.string().uuid(),
@@ -51,6 +96,7 @@ const submissionSchema = z.object({
   context_id: z.string().uuid().nullable().optional(),
   time_taken_seconds: z.number().int().nonnegative().default(0),
   model: z.enum(["openai", "anthropic", "claude", "gpt"]).optional(),
+  orchestration_submission: orchestrationSubmissionSchema,
 });
 
 router.use(requireAuth);
@@ -161,6 +207,7 @@ router.post(
     let judgeFeedback: Record<string, unknown> = {};
     let aiResponses: Array<{ response: string; token_count: number }> = [];
     let generatedScreenshotUrl: string | null = null;
+    let agentTrace: Record<string, unknown> | null = null;
 
     if (challenge.category === "spec_to_prompt") {
       const execution = await executeSpecToPrompt({
@@ -330,10 +377,144 @@ router.post(
         },
       ];
       generatedScreenshotUrl = `data:image/png;base64,${generatedScreenshotBase64}`;
+    } else if (
+      SDE2_CATEGORIES.has(challenge.category as string) &&
+      !SDE2_ENABLED
+    ) {
+      res.status(503).json({
+        error:
+          "SDE2+ challenges are coming soon. The Managed Agents eval infrastructure is not yet provisioned for this challenge category.",
+      });
+      return;
+    } else if (challenge.category === "distributed_debug") {
+      const data = challenge.challenge_data as any;
+      const candidatePrompt = prompts[0]?.prompt ?? "";
+      const execution = await executeDistributedDebug({
+        challengeData: data,
+        candidatePrompt,
+        candidateModel: provider === "anthropic" ? undefined : undefined,
+      });
+      const judged = await judgeDistributedDebug({
+        scenario: data.scenario,
+        hiddenRootCause: data.hidden_root_cause,
+        rubric: data.rubric,
+        candidatePrompt,
+        signals: execution.signals,
+        finalText: execution.trace.final_text,
+        toolCallSummary: summarizeToolCalls(execution.trace.tool_calls),
+        provider,
+      });
+      judgeFeedback = { ...judged, signals: execution.signals };
+      accuracyScore = Number(judgeFeedback.overall_score ?? 0);
+      tokenScore = budgetEfficiencyScore(execution.signals);
+      combinedScore = computeCombinedScore({
+        category: challenge.category,
+        accuracyRaw: accuracyScore,
+        tokenScore,
+        timeScore,
+      });
+      aiResponses = [
+        {
+          response: execution.trace.final_text || "(agent produced no final text)",
+          token_count:
+            execution.trace.usage.input_tokens + execution.trace.usage.output_tokens,
+        },
+      ];
+      agentTrace = execution.trace as unknown as Record<string, unknown>;
+    } else if (challenge.category === "system_design_build") {
+      const data = challenge.challenge_data as any;
+      const candidatePrompt = prompts[0]?.prompt ?? "";
+      const execution = await executeSystemDesignBuild({
+        challengeData: data,
+        candidatePrompt,
+      });
+      const judged = await judgeSystemDesignBuild({
+        spec: data.spec,
+        rubric: data.rubric,
+        candidatePrompt,
+        signals: execution.signals,
+        finalText: execution.trace.final_text,
+        toolCallSummary: summarizeToolCalls(execution.trace.tool_calls),
+        provider,
+      });
+      judgeFeedback = { ...judged, signals: execution.signals };
+      accuracyScore = Number(judgeFeedback.overall_score ?? 0);
+      tokenScore = budgetEfficiencyScore(execution.signals);
+      combinedScore = computeCombinedScore({
+        category: challenge.category,
+        accuracyRaw: accuracyScore,
+        tokenScore,
+        timeScore,
+      });
+      aiResponses = [
+        {
+          response: execution.trace.final_text || "(agent produced no final text)",
+          token_count:
+            execution.trace.usage.input_tokens + execution.trace.usage.output_tokens,
+        },
+      ];
+      agentTrace = execution.trace as unknown as Record<string, unknown>;
+    } else if (challenge.category === "agent_orchestration") {
+      const data = challenge.challenge_data as any;
+      const orchestration = body.orchestration_submission;
+      if (!orchestration) {
+        res.status(400).json({
+          error:
+            "agent_orchestration submissions require an `orchestration_submission` body with at minimum a system_prompt.",
+        });
+        return;
+      }
+      // The eval-fixture payload would normally come from a sealed store;
+      // for now we expect challenge_data.eval_fixture_payload to be set, or
+      // fall back to the goal text so the agent can at least run.
+      const evalPayload =
+        String(data.eval_fixture_payload ?? "") || String(data.goal ?? "");
+      const expectedSubgoals = Array.isArray(data.expected_subgoals)
+        ? data.expected_subgoals
+        : [];
+
+      const execution = await executeAgentOrchestration({
+        challengeData: data,
+        submission: orchestration,
+        evalFixturePayload: evalPayload,
+      });
+      const judged = await judgeAgentOrchestration({
+        goal: data.goal,
+        rubric: data.rubric,
+        passThreshold: Number(data.pass_threshold ?? 0.7),
+        signals: execution.signals,
+        expectedSubgoals,
+        finalOutputContract: data.required_tools?.find(
+          (t: any) => t.scoring_role === "final_output",
+        ),
+        provider,
+      });
+      judgeFeedback = { ...judged, signals: execution.signals };
+      accuracyScore = Number(judgeFeedback.overall_score ?? 0);
+      tokenScore = budgetEfficiencyScore(execution.signals);
+      combinedScore = computeCombinedScore({
+        category: challenge.category,
+        accuracyRaw: accuracyScore,
+        tokenScore,
+        timeScore: 100,
+      });
+      aiResponses = [
+        {
+          response:
+            JSON.stringify(execution.signals.final_output ?? null, null, 2) ||
+            "(no final_output recorded)",
+          token_count:
+            execution.trace.usage.input_tokens + execution.trace.usage.output_tokens,
+        },
+      ];
+      agentTrace = execution.trace as unknown as Record<string, unknown>;
     }
 
     let tokenPercentile: number | null = null;
-    if (challenge.category !== "architecture_pick") {
+    if (
+      challenge.category !== "architecture_pick" &&
+      !SDE2_CATEGORIES.has(challenge.category)
+    ) {
       const { data: peerRows } = await supabaseAdmin
         .from("submissions")
         .select("prompts")
@@ -429,6 +610,7 @@ router.post(
         time_taken_seconds: body.time_taken_seconds,
         combined_score: combinedScore,
         judge_feedback: judgeFeedback,
+        agent_trace: agentTrace,
         status: "completed",
         completed_at: new Date().toISOString(),
       })
