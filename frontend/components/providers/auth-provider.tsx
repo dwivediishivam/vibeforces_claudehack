@@ -86,15 +86,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const client = supabase;
     let mounted = true;
 
-    async function resolveProfile(userId: string) {
-      // Retry briefly — handles the race where a fresh signup hasn't
-      // yet had its profile row created by the handle_new_user trigger,
-      // and any transient RLS/network blip.
+    let initialProfileResolved = false;
+
+    async function resolveInitialProfile(userId: string) {
+      // First load only: retry briefly to handle the signup race where
+      // handle_new_user hasn't yet inserted the profile row. If still
+      // missing after retries, the session is unusable — sign out.
       const profile = await waitForProfile(userId);
       if (profile) return profile;
-      // No profile after retries: the session is unusable. Sign the user
-      // out so AppShell redirects to /login instead of looping on the
-      // "Restoring your session" card forever.
       await client.auth.signOut();
       return null;
     }
@@ -106,7 +105,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!mounted) return;
       setSession(session);
-      setProfile(session?.user ? await resolveProfile(session.user.id) : null);
+      if (session?.user) {
+        const next = await resolveInitialProfile(session.user.id);
+        if (!mounted) return;
+        setProfile(next);
+        initialProfileResolved = true;
+      } else {
+        setProfile(null);
+      }
       setLoading(false);
     }
 
@@ -114,11 +120,37 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const {
       data: { subscription },
-    } = client.auth.onAuthStateChange(async (_event, nextSession) => {
+    } = client.auth.onAuthStateChange(async (event, nextSession) => {
+      // INITIAL_SESSION is already handled by initialize() — skip the
+      // duplicate concurrent profile load.
+      if (event === "INITIAL_SESSION") return;
+
       setSession(nextSession);
-      setProfile(
-        nextSession?.user ? await resolveProfile(nextSession.user.id) : null,
-      );
+
+      if (!nextSession?.user) {
+        setProfile(null);
+        setLoading(false);
+        return;
+      }
+
+      // For TOKEN_REFRESHED / SIGNED_IN / USER_UPDATED events on an
+      // already-authenticated session, do a single non-retrying fetch
+      // and keep the previous profile if it transiently misses. Never
+      // wipe profile to null and never auto-signOut here — that's what
+      // caused the multi-tab "Restoring your session" flash.
+      const next = await loadProfile(nextSession.user.id);
+      if (!mounted) return;
+      if (next) {
+        setProfile(next);
+        initialProfileResolved = true;
+      } else if (!initialProfileResolved) {
+        // First-ever profile load failed (e.g. fresh SIGNED_IN after
+        // signup). Fall back to the retrying path.
+        const retried = await resolveInitialProfile(nextSession.user.id);
+        if (!mounted) return;
+        setProfile(retried);
+        if (retried) initialProfileResolved = true;
+      }
       setLoading(false);
     });
 
