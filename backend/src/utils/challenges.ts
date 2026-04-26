@@ -89,6 +89,28 @@ export function sanitizeChallenge(challenge: ChallengeRow) {
         target_screenshot_url: challenge.challenge_data.target_screenshot_url,
       };
       break;
+    case "distributed_debug": {
+      // Strip hidden_root_cause (the answer) and rubric (judge-only).
+      const { hidden_root_cause, rubric, ...safe } = challenge.challenge_data ?? {};
+      void hidden_root_cause;
+      void rubric;
+      base.challenge_data = safe;
+      break;
+    }
+    case "system_design_build": {
+      const { rubric, ...safe } = challenge.challenge_data ?? {};
+      void rubric;
+      base.challenge_data = safe;
+      break;
+    }
+    case "agent_orchestration": {
+      const { rubric, eval_fixture_payload, ...safe } =
+        challenge.challenge_data ?? {};
+      // Eval payload URL is fine to expose for transparency; rubric stays private.
+      void rubric;
+      base.challenge_data = { ...safe, eval_fixture_payload };
+      break;
+    }
     default:
       base.challenge_data = {};
   }

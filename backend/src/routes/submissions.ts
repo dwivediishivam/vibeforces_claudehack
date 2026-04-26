@@ -67,6 +67,21 @@ const SDE2_CATEGORIES = new Set([
 
 const SDE2_ENABLED = String(process.env.VIBEFORCES_SDE2_ENABLED ?? "false").toLowerCase() === "true";
 
+// SDE2+ challenges are pro-tier. Only the explicit allowlist below can submit;
+// everyone else gets a 402 with an upgrade message. The frontend mirrors this
+// gate so the UI surfaces the same prompt instead of an opaque server error.
+const SDE2_ALLOWED_USERNAMES = new Set(
+  (process.env.VIBEFORCES_SDE2_ALLOWED_USERNAMES ?? "dwivediishivam")
+    .split(",")
+    .map((u) => u.trim().toLowerCase())
+    .filter(Boolean),
+);
+
+function userCanAttemptSde2(username: string | null | undefined) {
+  if (!username) return false;
+  return SDE2_ALLOWED_USERNAMES.has(username.toLowerCase());
+}
+
 const promptSchema = z.object({
   prompt: z.string().min(1),
   token_count: z.number().int().nonnegative().optional(),
@@ -384,6 +399,16 @@ router.post(
       res.status(503).json({
         error:
           "SDE2+ challenges are coming soon. The Managed Agents eval infrastructure is not yet provisioned for this challenge category.",
+      });
+      return;
+    } else if (
+      SDE2_CATEGORIES.has(challenge.category as string) &&
+      !userCanAttemptSde2(req.auth!.profile.username)
+    ) {
+      res.status(402).json({
+        error:
+          "SDE2+ challenges are part of the Pro plan. Upgrade your plan to submit, or contact us at hello@vibeforces.tech.",
+        upgrade_required: true,
       });
       return;
     } else if (challenge.category === "distributed_debug") {

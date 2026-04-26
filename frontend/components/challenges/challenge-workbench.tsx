@@ -95,6 +95,17 @@ export function ChallengeWorkbench({
     challenge.category === "system_design_build" ||
     challenge.category === "agent_orchestration";
 
+  const sde2AllowedUsernamesRaw =
+    process.env.NEXT_PUBLIC_SDE2_ALLOWED_USERNAMES ?? "dwivediishivam";
+  const sde2AllowedUsernames = new Set(
+    sde2AllowedUsernamesRaw
+      .split(",")
+      .map((u) => u.trim().toLowerCase())
+      .filter(Boolean),
+  );
+  const username = ((auth.profile as any)?.username ?? "").toLowerCase();
+  const sde2Locked = isSde2 && !sde2AllowedUsernames.has(username);
+
   const preparedPrompts = useMemo(() => {
     if (challenge.category === "architecture_pick") return [];
     if (isSde2) return [sde2Prompt].filter(Boolean);
@@ -604,56 +615,83 @@ export function ChallengeWorkbench({
           </Card>
 
           <div className="space-y-4">
-            <Card className="surface-card rounded-2xl p-6">
-              <label className="mb-2 block font-mono-ui text-sm text-[#f1f5f9]">
-                {challenge.category === "agent_orchestration"
-                  ? "Agent system prompt"
-                  : "Your prompt for the agent"}
-              </label>
-              <textarea
-                key={`sde2-${resetKey}`}
-                value={sde2Prompt}
-                onChange={(e) => setSde2Prompt(e.target.value)}
-                disabled={disabled || submitting}
-                rows={12}
-                placeholder={
-                  challenge.category === "distributed_debug"
-                    ? "Describe how the agent should reproduce, isolate, and patch. Hint: tell it to run the failing test first."
-                    : challenge.category === "system_design_build"
-                      ? "Describe what to build, in what order, and which decisions to log. The agent has bash, write, edit, read tools."
-                      : "Define your agent's behavior. It will be invoked against the eval fixture and graded on subgoal-tool calls."
-                }
-                className="w-full rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs leading-6 text-[#f1f5f9] focus:border-[#a78bfa] focus:outline-none"
-              />
-            </Card>
-
-            {challenge.category === "agent_orchestration" ? (
-              <Card className="surface-card rounded-2xl p-6">
-                <label className="mb-2 block font-mono-ui text-sm text-[#f1f5f9]">
-                  Extra config (JSON, optional)
-                </label>
-                <p className="mb-2 text-xs text-[#94a3b8]">
-                  Add <code>custom_tools_extra</code> or override <code>task_budget_override</code>.
-                  Leave blank to use only the registered tools.
+            {sde2Locked ? (
+              <Card className="surface-card rounded-2xl border border-[#7c3aed]/40 bg-[#7c3aed]/10 p-8 text-center">
+                <div className="mx-auto mb-3 inline-flex size-10 items-center justify-center rounded-full bg-[#7c3aed]/20 font-mono-ui text-lg text-[#a78bfa]">
+                  ★
+                </div>
+                <div className="font-mono-ui text-lg text-[#f1f5f9]">
+                  Pro-tier challenge
+                </div>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-7 text-[#cbd5e1]">
+                  This SDE2+ challenge runs inside an isolated Claude
+                  Managed Agents sandbox — token-priced, capped per session.
+                  Available to candidates on a Pro plan.
                 </p>
-                <textarea
-                  value={orchestrationJson}
-                  onChange={(e) => setOrchestrationJson(e.target.value)}
-                  disabled={disabled || submitting}
-                  rows={6}
-                  placeholder={`{\n  "custom_tools_extra": [],\n  "task_budget_override": 80000\n}`}
-                  className="w-full rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs leading-6 text-[#f1f5f9] focus:border-[#a78bfa] focus:outline-none"
-                />
+                <div className="mt-5 inline-flex flex-col items-center gap-2 text-xs text-[#94a3b8]">
+                  <span>Upgrade your plan to submit, or contact us:</span>
+                  <a
+                    href="mailto:hello@vibeforces.tech?subject=VibeForces%20Pro%20access"
+                    className="font-mono-ui text-[#a78bfa] hover:underline"
+                  >
+                    hello@vibeforces.tech
+                  </a>
+                </div>
               </Card>
-            ) : null}
+            ) : (
+              <>
+                <Card className="surface-card rounded-2xl p-6">
+                  <label className="mb-2 block font-mono-ui text-sm text-[#f1f5f9]">
+                    {challenge.category === "agent_orchestration"
+                      ? "Agent system prompt"
+                      : "Your prompt for the agent"}
+                  </label>
+                  <textarea
+                    key={`sde2-${resetKey}`}
+                    value={sde2Prompt}
+                    onChange={(e) => setSde2Prompt(e.target.value)}
+                    disabled={disabled || submitting}
+                    rows={12}
+                    placeholder={
+                      challenge.category === "distributed_debug"
+                        ? "Describe how the agent should reproduce, isolate, and patch. Hint: tell it to run the failing test first."
+                        : challenge.category === "system_design_build"
+                          ? "Describe what to build, in what order, and which decisions to log. The agent has bash, write, edit, read tools."
+                          : "Define your agent's behavior. It will be invoked against the eval fixture and graded on subgoal-tool calls."
+                    }
+                    className="w-full rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs leading-6 text-[#f1f5f9] focus:border-[#a78bfa] focus:outline-none"
+                  />
+                </Card>
 
-            <Button
-              onClick={() => void handleSubmit({ single: sde2Prompt })}
-              disabled={disabled || submitting || !sde2Prompt.trim()}
-              className="w-full"
-            >
-              {submitting ? "Running agent..." : "Run agent & submit"}
-            </Button>
+                {challenge.category === "agent_orchestration" ? (
+                  <Card className="surface-card rounded-2xl p-6">
+                    <label className="mb-2 block font-mono-ui text-sm text-[#f1f5f9]">
+                      Extra config (JSON, optional)
+                    </label>
+                    <p className="mb-2 text-xs text-[#94a3b8]">
+                      Add <code>custom_tools_extra</code> or override <code>task_budget_override</code>.
+                      Leave blank to use only the registered tools.
+                    </p>
+                    <textarea
+                      value={orchestrationJson}
+                      onChange={(e) => setOrchestrationJson(e.target.value)}
+                      disabled={disabled || submitting}
+                      rows={6}
+                      placeholder={`{\n  "custom_tools_extra": [],\n  "task_budget_override": 80000\n}`}
+                      className="w-full rounded-lg border border-[#1e293b] bg-[#0a0f1e] p-3 font-mono text-xs leading-6 text-[#f1f5f9] focus:border-[#a78bfa] focus:outline-none"
+                    />
+                  </Card>
+                ) : null}
+
+                <Button
+                  onClick={() => void handleSubmit({ single: sde2Prompt })}
+                  disabled={disabled || submitting || !sde2Prompt.trim()}
+                  className="w-full"
+                >
+                  {submitting ? "Running agent..." : "Run agent & submit"}
+                </Button>
+              </>
+            )}
 
             {submission?.aiResponses[0] ? (
               <AIResponseDisplay
