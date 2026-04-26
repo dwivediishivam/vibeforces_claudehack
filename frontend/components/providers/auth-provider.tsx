@@ -86,6 +86,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const client = supabase;
     let mounted = true;
 
+    async function resolveProfile(userId: string) {
+      // Retry briefly — handles the race where a fresh signup hasn't
+      // yet had its profile row created by the handle_new_user trigger,
+      // and any transient RLS/network blip.
+      const profile = await waitForProfile(userId);
+      if (profile) return profile;
+      // No profile after retries: the session is unusable. Sign the user
+      // out so AppShell redirects to /login instead of looping on the
+      // "Restoring your session" card forever.
+      await client.auth.signOut();
+      return null;
+    }
+
     async function initialize() {
       const {
         data: { session },
@@ -93,7 +106,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (!mounted) return;
       setSession(session);
-      setProfile(session?.user ? await loadProfile(session.user.id) : null);
+      setProfile(session?.user ? await resolveProfile(session.user.id) : null);
       setLoading(false);
     }
 
@@ -103,7 +116,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       data: { subscription },
     } = client.auth.onAuthStateChange(async (_event, nextSession) => {
       setSession(nextSession);
-      setProfile(nextSession?.user ? await loadProfile(nextSession.user.id) : null);
+      setProfile(
+        nextSession?.user ? await resolveProfile(nextSession.user.id) : null,
+      );
       setLoading(false);
     });
 

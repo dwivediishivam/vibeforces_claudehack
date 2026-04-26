@@ -15,17 +15,19 @@ import {
   Mic,
   Zap,
 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { Separator } from "@/components/ui/separator";
 import { Logo } from "@/components/layout/logo";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/hooks/useAuth";
+import { apiClient } from "@/lib/api";
 
 type Role = "learner" | "recruiter" | "admin";
 
 const navByRole: Record<Role, Array<{ href: string; label: string; icon: React.ComponentType<{ className?: string }>; badge?: string }>> = {
   learner: [
     { href: "/learner/dashboard", label: "Dashboard", icon: LayoutDashboard },
-    { href: "/learner/challenges", label: "Challenges", icon: Swords, badge: "30" },
+    { href: "/learner/challenges", label: "Challenges", icon: Swords },
     { href: "/learner/leaderboard", label: "Leaderboard", icon: Trophy },
     { href: "/learner/contests", label: "Contests", icon: Flame },
   ],
@@ -92,6 +94,29 @@ export function SidebarContent({
   mobile?: boolean;
 }) {
   const auth = useAuth();
+  const [challengeCount, setChallengeCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (role !== "learner") return;
+    let cancelled = false;
+    apiClient
+      .getChallenges()
+      .then((response) => {
+        if (!cancelled) setChallengeCount(response.challenges?.length ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setChallengeCount(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [role]);
+
+  const items = navByRole[role].map((item) =>
+    item.href === "/learner/challenges" && challengeCount != null
+      ? { ...item, badge: String(challengeCount) }
+      : item,
+  );
 
   return (
     <div className="flex h-full flex-col bg-[#0a0f1e] p-4">
@@ -100,7 +125,7 @@ export function SidebarContent({
         Main
       </div>
       <nav className="space-y-1">
-        {navByRole[role].map((item) => (
+        {items.map((item) => (
           <SidebarLink key={item.href} {...item} />
         ))}
       </nav>
