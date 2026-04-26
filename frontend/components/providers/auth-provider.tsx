@@ -122,35 +122,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setLoading(false);
     });
 
+    let refreshTimer: number | null = null;
+    let refreshing = false;
+
     async function refreshFromStorage() {
-      const {
-        data: { session: latest },
-      } = await client.auth.getSession();
-      if (!mounted) return;
-      setSession(latest);
-      setProfile(latest?.user ? await loadProfile(latest.user.id) : null);
+      if (refreshing) return;
+      refreshing = true;
+      try {
+        const {
+          data: { session: latest },
+        } = await client.auth.getSession();
+        if (!mounted) return;
+        setSession(latest);
+        if (latest?.user) {
+          const next = await loadProfile(latest.user.id);
+          if (!mounted) return;
+          if (next) setProfile(next);
+        } else {
+          setProfile(null);
+        }
+      } finally {
+        refreshing = false;
+      }
+    }
+
+    function scheduleRefresh() {
+      if (refreshTimer !== null) return;
+      refreshTimer = window.setTimeout(() => {
+        refreshTimer = null;
+        void refreshFromStorage();
+      }, 150);
     }
 
     function onVisibility() {
-      if (document.visibilityState === "visible") void refreshFromStorage();
+      if (document.visibilityState === "visible") scheduleRefresh();
     }
     function onFocus() {
-      void refreshFromStorage();
-    }
-    function onStorage(event: StorageEvent) {
-      if (event.key && event.key.includes("supabase")) void refreshFromStorage();
+      scheduleRefresh();
     }
 
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("focus", onFocus);
-    window.addEventListener("storage", onStorage);
 
     return () => {
       mounted = false;
       subscription.unsubscribe();
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("focus", onFocus);
-      window.removeEventListener("storage", onStorage);
     };
   }, [supabase]);
 
