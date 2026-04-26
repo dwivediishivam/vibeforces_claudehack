@@ -278,7 +278,12 @@ export function ChallengeWorkbench({
             </div>
           ) : null}
         </div>
-        <ModelSelector value={model} onChange={setModel} disabled={submitting || disabled} />
+        <ModelSelector
+          value={model}
+          onChange={setModel}
+          disabled={submitting || disabled}
+          fixedManagedAgents={isSde2}
+        />
       </div>
 
       {challenge.category === "spec_to_prompt" ? (
